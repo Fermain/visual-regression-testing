@@ -1,4 +1,4 @@
-# Yoti Visual Regression Testing Suite
+# Visual Regression Testing Suite
 
 This is a simple, bare bones project to run BackstopJS.
 
@@ -39,8 +39,4 @@ BACKSTOP_PATHS="/,/pricing" \
 npm test
 ```
 
-Artifacts and reports land under `backstop_data/`. The HTML report opens automatically after a test run.
-
-## Development Notes
-
-We may point the URLs at temporary local fixtures while iterating, but the primary flow targets live HTTPS resources. The aim is to keep the implementation minimal to highlight the regression results rather than building a reusable framework.
+Artifacts and reports land under `data/`. The HTML report opens automatically after a test run.
