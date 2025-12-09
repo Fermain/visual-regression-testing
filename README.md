@@ -1,42 +1,38 @@
-# Visual Regression Testing Suite
+# sv
 
-This is a simple, bare bones project to run BackstopJS.
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-The purpose is to compare two versions of a given static site, one canonical and one candidate.
+## Creating a project
 
-## Requirements
+If you're seeing this, you've probably already done this step. Congrats!
 
-- Node.js 18+
-- HTTPS-accessible canonical and candidate URLs
+```sh
+# create a new project in the current directory
+npx sv create
 
-## Setup
-
-```bash
-npm install
+# create a new project in my-app
+npx sv create my-app
 ```
 
-## Configuration
+## Developing
 
-Set the targets before running BackstopJS:
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
-- `CANONICAL_URL`: baseline site root
-- `CANDIDATE_URL`: site root to compare against the baseline
-- `BACKSTOP_PATHS`: optional comma separated list of paths, defaults to `/`
-- `BACKSTOP_SELECTOR`: optional single selector to narrow the capture
+```sh
+npm run dev
 
-## Usage
-
-- `npm run reference`: capture canonical snapshots for the configured paths
-- `npm test`: compare candidate snapshots against the reference set
-- `npm run approve`: promote the latest candidate snapshots to the reference set
-
-Example run:
-
-```bash
-CANONICAL_URL=https://example.com \
-CANDIDATE_URL=https://staging.example.com \
-BACKSTOP_PATHS="/,/pricing" \
-npm test
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
 ```
 
-Artifacts and reports land under `data/`. The HTML report opens automatically after a test run.
+## Building
+
+To create a production version of your app:
+
+```sh
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
