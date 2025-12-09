@@ -1,38 +1,47 @@
-# sv
+# Visual Regression Testing UI
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This project provides a user-friendly interface for running visual regression tests using [BackstopJS](https://github.com/garris/BackstopJS).
 
-## Creating a project
+It allows you to define projects (scenarios), manage paths and URLs, and execute tests directly from the browser.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Features
 
-```sh
-# create a new project in the current directory
-npx sv create
+- **Project Management**: Create multiple configurations for different sites or environments.
+- **Easy Configuration**: UI to set Canonical (Reference) and Candidate (Test) URLs.
+- **Path Management**: Simple text list for defining paths to test.
+- **One-Click Execution**: Buttons to generate references, run tests, and approve changes.
+- **Visual Reporting**: Integrated view of test results with diff images.
 
-# create a new project in my-app
-npx sv create my-app
-```
+## Setup
 
-## Developing
+1.  Install dependencies:
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+    ```bash
+    npm install
+    ```
 
-```sh
-npm run dev
+2.  Start the development server:
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+    ```bash
+    npm run dev
+    ```
 
-## Building
+3.  Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-To create a production version of your app:
+## Usage
 
-```sh
-npm run build
-```
+1.  **Create a Project**: Give it a name (e.g., "My Website").
+2.  **Configure**:
+    - **Canonical URL**: The stable version of your site (e.g., production).
+    - **Candidate URL**: The version you want to test (e.g., staging or localhost).
+    - **Paths**: List the relative paths you want to capture (e.g., `/`, `/about`, `/contact`).
+3.  **Run Reference**: Click "Create Reference" to capture screenshots of the Canonical site.
+4.  **Run Test**: Click "Run Test" to capture screenshots of the Candidate site and compare them.
+5.  **Review**: Check the results below. Failed tests will show a diff image.
+6.  **Approve**: If the changes are expected, click "Approve Changes" to update the Reference bitmaps with the new ones.
 
-You can preview the production build with `npm run preview`.
+## Data Storage
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- Project configurations are stored in `data/projects.json`.
+- Screenshots and reports are stored in `data/projects/{project-id}/`.
+- You can commit `data/projects.json` to share configurations, but `data/projects/{id}` folders are typically ignored or treated as artifacts.

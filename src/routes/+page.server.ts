@@ -1,0 +1,40 @@
+import * as db from '$lib/server/storage';
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { randomUUID } from 'node:crypto';
+import { DEFAULT_VIEWPORTS } from '$lib/types';
+
+export const load: PageServerLoad = async () => {
+	const projects = await db.getProjects();
+	return { projects };
+};
+
+export const actions: Actions = {
+	create: async ({ request }) => {
+		const data = await request.formData();
+		const name = data.get('name') as string;
+
+		if (!name) {
+			return fail(400, { missing: true });
+		}
+
+		const newProject = {
+			id: randomUUID(),
+			name,
+			canonicalBaseUrl: '',
+			candidateBaseUrl: '',
+			paths: ['/'],
+			viewports: DEFAULT_VIEWPORTS
+		};
+
+		await db.saveProject(newProject);
+		throw redirect(303, `/project/${newProject.id}`);
+	},
+	delete: async ({ request }) => {
+		const data = await request.formData();
+		const id = data.get('id') as string;
+		if (id) {
+			await db.deleteProject(id);
+		}
+	}
+};
