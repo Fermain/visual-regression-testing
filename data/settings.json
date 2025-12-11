@@ -1,0 +1,14 @@
+{
+	"viewports": [
+		{
+			"label": "desktop",
+			"width": 1440,
+			"height": 900
+		},
+		{
+			"label": "mobile",
+			"width": 390,
+			"height": 844
+		}
+	]
+}

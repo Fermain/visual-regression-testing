@@ -1,12 +1,13 @@
 import * as db from '$lib/server/storage';
+import { getSettings } from '$lib/server/settings';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { randomUUID } from 'node:crypto';
-import { DEFAULT_VIEWPORTS } from '$lib/types';
 
 export const load: PageServerLoad = async () => {
 	const projects = await db.getProjects();
-	return { projects };
+	const settings = await getSettings();
+	return { projects, settings };
 };
 
 export const actions: Actions = {
@@ -23,8 +24,7 @@ export const actions: Actions = {
 			name,
 			canonicalBaseUrl: '',
 			candidateBaseUrl: '',
-			paths: ['/'],
-			viewports: DEFAULT_VIEWPORTS
+			paths: ['/']
 		};
 
 		await db.saveProject(newProject);

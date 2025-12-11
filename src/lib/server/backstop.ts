@@ -1,5 +1,6 @@
 import backstop from 'backstopjs';
 import type { Project } from '$lib/types';
+import { getSettings } from '$lib/server/settings';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
@@ -9,8 +10,10 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 	// Ensure project directory exists
 	await fs.mkdir(dataDir, { recursive: true });
 
+	// Get global viewports from settings
+	const settings = await getSettings();
+
 	const scenarios = project.paths.map((p: string) => {
-		// Basic validation to ensure we don't crash on invalid URLs
 		let url = project.candidateBaseUrl;
 		let referenceUrl = project.canonicalBaseUrl;
 
@@ -32,7 +35,7 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 
 	const config = {
 		id: project.id,
-		viewports: project.viewports,
+		viewports: settings.viewports,
 		onBeforeScript: 'puppeteer/onBefore.cjs',
 		onReadyScript: 'puppeteer/onReady.cjs',
 		scenarios,
@@ -60,8 +63,6 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		await backstop(command, { config });
 		return { success: true };
 	} catch (err) {
-		// BackstopJS rejects on test failure (mismatch found) - this is normal behavior
-		// Convert error to a serializable string for SvelteKit
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		console.error('Backstop run completed with errors (likely mismatches):', errorMessage);
 		return { success: false, error: errorMessage };
