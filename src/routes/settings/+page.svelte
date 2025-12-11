@@ -66,11 +66,6 @@
 		submitForm();
 	}
 
-	function updateViewportIcon(index: number, icon: ViewportIcon) {
-		viewports = viewports.map((vp, i) => (i === index ? { ...vp, icon } : vp));
-		submitForm();
-	}
-
 	function gcd(a: number, b: number): number {
 		a = Math.abs(Math.round(a));
 		b = Math.abs(Math.round(b));
@@ -146,25 +141,11 @@
 								{@const Icon = getIconComponent(viewport.icon)}
 								<TableRow>
 									<TableCell>
-										<Select.Root
-											type="single"
-											value={viewport.icon || 'monitor'}
-											onValueChange={(v) => updateViewportIcon(i, v as ViewportIcon)}
+										<div
+											class="w-[70px] h-8 flex items-center justify-center rounded-md border bg-muted/30"
 										>
-											<Select.Trigger class="w-[70px] h-8">
-												<Icon class="h-4 w-4" />
-											</Select.Trigger>
-											<Select.Content>
-												{#each iconOptions as option}
-													<Select.Item value={option.value}>
-														<div class="flex items-center gap-2">
-															<option.icon class="h-4 w-4" />
-															{option.label}
-														</div>
-													</Select.Item>
-												{/each}
-											</Select.Content>
-										</Select.Root>
+											<Icon class="h-4 w-4 text-muted-foreground" />
+										</div>
 									</TableCell>
 									<TableCell class="font-medium">{viewport.label}</TableCell>
 									<TableCell>

@@ -1,42 +1,10 @@
 [
 	{
-		"id": "0024b472-3c1e-46d9-845b-ef371c26be2f",
-		"name": "provemyage",
-		"canonicalBaseUrl": "https://www.provemyage.com/",
-		"candidateBaseUrl": "https://www.provemyage.com/",
-		"paths": ["/", "/contact"],
-		"viewports": [
-			{
-				"label": "desktop",
-				"width": 1440,
-				"height": 900
-			},
-			{
-				"label": "mobile",
-				"width": 390,
-				"height": 844
-			}
-		],
-		"lastRun": "2025-12-09T10:33:40.920Z"
-	},
-	{
-		"id": "12b68a5b-bf9d-4fc6-a67e-e80a9c11f2c8",
-		"name": "yoti",
+		"id": "faa9eadf-43db-4856-9e21-11da9f6da58c",
+		"name": "Yoti",
 		"canonicalBaseUrl": "https://yoti.com/",
 		"candidateBaseUrl": "https://yoti.com/",
 		"paths": ["/"],
-		"viewports": [
-			{
-				"label": "desktop",
-				"width": 1440,
-				"height": 900
-			},
-			{
-				"label": "mobile",
-				"width": 390,
-				"height": 844
-			}
-		],
-		"lastRun": "2025-12-09T13:10:41.948Z"
+		"lastRun": "2025-12-11T08:04:08.143Z"
 	}
 ]
