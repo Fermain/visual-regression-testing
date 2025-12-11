@@ -201,7 +201,31 @@ This action cannot be undone."
 
 	<!-- Report Preview -->
 	<div class="flex-1 relative">
-		{#if hasReport}
+		{#if runningCommand === 'reference'}
+			<div class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5">
+				<div class="rounded-full bg-muted p-6 mb-4">
+					<Loader2Icon class="h-10 w-10 opacity-40 animate-spin" />
+				</div>
+				<p class="font-medium text-lg">Creating new reference...</p>
+				<p class="text-sm max-w-md">
+					Capturing reference screenshots from the canonical URL. This may take a moment.
+				</p>
+			</div>
+		{:else if form?.command === 'reference' && form?.success}
+			<div class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5">
+				<div class="rounded-full bg-green-500/20 p-6 mb-4">
+					<EyeIcon class="h-10 w-10 text-green-500" />
+				</div>
+				<p class="font-medium text-lg text-green-500">Reference created successfully!</p>
+				<p class="text-sm max-w-md">
+					New reference screenshots have been captured. Run a test to compare against this baseline.
+				</p>
+				<Button class="mt-4 cursor-pointer" onclick={() => handleButtonClick('test')}>
+					<PlayIcon class="h-4 w-4 mr-2" />
+					Run Test Now
+				</Button>
+			</div>
+		{:else if hasReport}
 			<iframe src={reportUrl} title="BackstopJS Report" class="absolute inset-0 w-full h-full border-0"></iframe>
 		{:else}
 			<div class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5">
@@ -217,11 +241,6 @@ This action cannot be undone."
 						<SettingsIcon class="h-4 w-4 mr-2" />
 						Configure Project
 					</Button>
-				{/if}
-				{#if form?.command === 'reference' && form?.success}
-					<p class="text-sm text-green-500 mt-4">
-						Reference created! Now run "Run Test" to compare.
-					</p>
 				{/if}
 			</div>
 		{/if}
