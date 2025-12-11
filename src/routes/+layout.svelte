@@ -10,11 +10,11 @@
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	function getBreadcrumbs(pathname: string) {
-		if (pathname === '/') return [{ label: 'Dashboard', href: '/' }];
+		if (pathname === '/') return [{ label: 'Tests', href: '/' }];
 		if (pathname === '/settings') return [{ label: 'Settings', href: '/settings' }];
 		if (pathname === '/project/new') {
 			return [
-				{ label: 'Dashboard', href: '/' },
+				{ label: 'Tests', href: '/' },
 				{ label: 'New Project', href: pathname }
 			];
 		}
@@ -26,17 +26,17 @@
 			
 			if (isEdit) {
 				return [
-					{ label: 'Dashboard', href: '/' },
+					{ label: 'Tests', href: '/' },
 					{ label: project?.name ?? 'Project', href: `/project/${projectId}` },
 					{ label: 'Edit', href: pathname }
 				];
 			}
 			return [
-				{ label: 'Dashboard', href: '/' },
+				{ label: 'Tests', href: '/' },
 				{ label: project?.name ?? 'Project', href: pathname }
 			];
 		}
-		return [{ label: 'Dashboard', href: '/' }];
+		return [{ label: 'Tests', href: '/' }];
 	}
 
 	let breadcrumbs = $derived(getBreadcrumbs($page.url.pathname));

@@ -13,6 +13,7 @@ export interface Project {
 	canonicalBaseUrl: string;
 	candidateBaseUrl: string;
 	paths: string[];
+	delay?: number;
 	clickSelector?: string;
 	postInteractionWait?: number;
 	lastRun?: string;

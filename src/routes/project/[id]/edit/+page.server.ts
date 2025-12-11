@@ -18,6 +18,7 @@ export const actions: Actions = {
 		const canonicalBaseUrl = data.get('canonicalBaseUrl') as string;
 		const candidateBaseUrl = data.get('candidateBaseUrl') as string;
 		const pathsStr = data.get('paths') as string;
+		const delayStr = data.get('delay') as string;
 		const clickSelector = data.get('clickSelector') as string;
 		const postInteractionWaitStr = data.get('postInteractionWait') as string;
 
@@ -34,6 +35,7 @@ export const actions: Actions = {
 					.map((p) => p.trim())
 					.filter((p) => p)
 			: ['/'];
+		project.delay = delayStr ? parseInt(delayStr, 10) : undefined;
 		project.clickSelector = clickSelector?.trim() || undefined;
 		project.postInteractionWait = postInteractionWaitStr ? parseInt(postInteractionWaitStr, 10) : undefined;
 

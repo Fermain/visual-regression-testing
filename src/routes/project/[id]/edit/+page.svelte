@@ -23,6 +23,7 @@
 	let canonicalBaseUrl = $state(data.project.canonicalBaseUrl);
 	let candidateBaseUrl = $state(data.project.candidateBaseUrl);
 	let paths = $state(data.project.paths.join('\n'));
+	let delay = $state(data.project.delay ?? 0);
 	let clickSelector = $state(data.project.clickSelector ?? '');
 	let postInteractionWait = $state(data.project.postInteractionWait ?? 500);
 
@@ -117,10 +118,28 @@ This action cannot be undone."
 			<CardHeader>
 				<CardTitle class="text-base">Automation</CardTitle>
 				<CardDescription>
-					Configure automatic interactions before capturing screenshots.
+					Configure timing and automatic interactions before capturing screenshots.
 				</CardDescription>
 			</CardHeader>
 			<CardContent class="space-y-4">
+				<div class="space-y-2">
+					<Label for="delay">Delay (ms)</Label>
+					<Input
+						type="number"
+						id="delay"
+						name="delay"
+						bind:value={delay}
+						min="0"
+						max="30000"
+						class="font-mono text-sm w-32"
+					/>
+					<p class="text-xs text-muted-foreground">
+						Time to wait after page load before any interactions (default: 0ms)
+					</p>
+				</div>
+
+				<Separator />
+
 				<div class="space-y-2">
 					<Label for="clickSelector">Click Selector</Label>
 					<Input

@@ -21,6 +21,7 @@
 	let canonicalBaseUrl = $state('');
 	let candidateBaseUrl = $state('');
 	let paths = $state('/');
+	let delay = $state(0);
 	let clickSelector = $state('');
 	let postInteractionWait = $state(500);
 </script>
@@ -103,10 +104,28 @@
 			<CardHeader>
 				<CardTitle class="text-base">Automation</CardTitle>
 				<CardDescription>
-					Configure automatic interactions before capturing screenshots.
+					Configure timing and automatic interactions before capturing screenshots.
 				</CardDescription>
 			</CardHeader>
 			<CardContent class="space-y-4">
+				<div class="space-y-2">
+					<Label for="delay">Delay (ms)</Label>
+					<Input
+						type="number"
+						id="delay"
+						name="delay"
+						bind:value={delay}
+						min="0"
+						max="30000"
+						class="font-mono text-sm w-32"
+					/>
+					<p class="text-xs text-muted-foreground">
+						Time to wait after page load before any interactions (default: 0ms)
+					</p>
+				</div>
+
+				<Separator />
+
 				<div class="space-y-2">
 					<Label for="clickSelector">Click Selector</Label>
 					<Input

@@ -6,7 +6,7 @@
 
 	const navItems = [
 		{
-			title: 'Dashboard',
+			title: 'Tests',
 			url: '/',
 			icon: LayoutDashboardIcon
 		},

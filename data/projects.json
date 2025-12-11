@@ -19,6 +19,7 @@
     ],
     "clickSelector": "#onetrust-accept-btn-handler",
     "postInteractionWait": 800,
-    "lastRun": "2025-12-11T09:19:32.960Z"
+    "lastRun": "2025-12-11T09:42:12.637Z",
+    "delay": 0
   }
 ]

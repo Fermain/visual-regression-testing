@@ -32,6 +32,9 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 			misMatchThreshold: 0.1
 		};
 
+		if (project.delay) {
+			scenario.delay = project.delay;
+		}
 		if (project.clickSelector) {
 			scenario.clickSelector = project.clickSelector;
 		}
@@ -67,6 +70,8 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		debugWindow: false,
 		openReport: false
 	};
+
+	console.log('BackstopJS config:', JSON.stringify(config, null, 2));
 
 	try {
 		await backstop(command, { config });
