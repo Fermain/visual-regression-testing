@@ -10,11 +10,48 @@
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import type { Project } from '$lib/types';
+	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 
 	let { projects }: { projects: Project[] } = $props();
 
 	const sidebar = useSidebar();
+
+	let deleteDialogOpen = $state(false);
+	let projectToDelete = $state<Project | null>(null);
+	let deleteFormEl = $state<HTMLFormElement | null>(null);
+
+	function openDeleteDialog(project: Project) {
+		projectToDelete = project;
+		deleteDialogOpen = true;
+	}
+
+	function handleDeleteConfirm() {
+		if (deleteFormEl && projectToDelete) {
+			const input = deleteFormEl.querySelector('input[name="id"]') as HTMLInputElement;
+			if (input) {
+				input.value = projectToDelete.id;
+				deleteFormEl.requestSubmit();
+			}
+		}
+		projectToDelete = null;
+	}
 </script>
+
+<ConfirmDialog
+	bind:open={deleteDialogOpen}
+	title="Delete Project"
+	description="Are you sure you want to delete '{projectToDelete?.name ?? 'this project'}'? This will permanently remove all test data, references, and reports.
+
+This action cannot be undone."
+	confirmText="Delete Project"
+	variant="destructive"
+	onConfirm={handleDeleteConfirm}
+/>
+
+<!-- Hidden form for delete submission -->
+<form method="POST" action="/?/delete" use:enhance bind:this={deleteFormEl} class="hidden">
+	<input type="hidden" name="id" value="" />
+</form>
 
 <Sidebar.Group class="group-data-[collapsible=icon]:hidden">
 	<Sidebar.GroupLabel>Projects</Sidebar.GroupLabel>
@@ -50,22 +87,13 @@
 							</a>
 						</DropdownMenu.Item>
 						<DropdownMenu.Separator />
-						<form method="POST" action="/?/delete" use:enhance class="contents">
-							<input type="hidden" name="id" value={project.id} />
-							<DropdownMenu.Item
-								class="text-destructive focus:text-destructive"
-								onclick={(e) => {
-									if (!confirm('Delete this project?')) {
-										e.preventDefault();
-									}
-								}}
-							>
-								<button type="submit" class="flex items-center gap-2 w-full">
-									<Trash2Icon class="h-4 w-4" />
-									<span>Delete Project</span>
-								</button>
-							</DropdownMenu.Item>
-						</form>
+						<DropdownMenu.Item
+							class="text-destructive focus:text-destructive"
+							onclick={() => openDeleteDialog(project)}
+						>
+							<Trash2Icon class="h-4 w-4" />
+							<span>Delete Project</span>
+						</DropdownMenu.Item>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			</Sidebar.MenuItem>

@@ -21,6 +21,8 @@
 	let canonicalBaseUrl = $state('');
 	let candidateBaseUrl = $state('');
 	let paths = $state('/');
+	let clickSelector = $state('');
+	let postInteractionWait = $state(500);
 </script>
 
 <div class="flex-1 overflow-auto p-6">
@@ -94,6 +96,48 @@
 					rows={6}
 					class="font-mono text-sm"
 				/>
+			</CardContent>
+		</Card>
+
+		<Card>
+			<CardHeader>
+				<CardTitle class="text-base">Automation</CardTitle>
+				<CardDescription>
+					Configure automatic interactions before capturing screenshots.
+				</CardDescription>
+			</CardHeader>
+			<CardContent class="space-y-4">
+				<div class="space-y-2">
+					<Label for="clickSelector">Click Selector</Label>
+					<Input
+						id="clickSelector"
+						name="clickSelector"
+						bind:value={clickSelector}
+						placeholder="#onetrust-accept-btn-handler"
+						class="font-mono text-sm"
+					/>
+					<p class="text-xs text-muted-foreground">
+						CSS selector to click before capture (e.g., cookie consent button)
+					</p>
+				</div>
+
+				<Separator />
+
+				<div class="space-y-2">
+					<Label for="postInteractionWait">Post-Interaction Wait (ms)</Label>
+					<Input
+						type="number"
+						id="postInteractionWait"
+						name="postInteractionWait"
+						bind:value={postInteractionWait}
+						min="0"
+						max="10000"
+						class="font-mono text-sm w-32"
+					/>
+					<p class="text-xs text-muted-foreground">
+						Time to wait after clicking before capturing (default: 500ms)
+					</p>
+				</div>
 			</CardContent>
 		</Card>
 

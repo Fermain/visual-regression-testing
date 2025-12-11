@@ -10,13 +10,15 @@
     "lastRun": "2025-12-11T08:04:08.143Z"
   },
   {
-    "id": "8d300f8c-8309-4d46-ad47-3fa0e30d6c36",
-    "name": "Provemyage",
+    "id": "253d8dab-222f-4dbe-95f6-c76d93788115",
+    "name": "pma",
     "canonicalBaseUrl": "https://www.provemyage.com/",
     "candidateBaseUrl": "https://www.provemyage.com/",
     "paths": [
       "/"
     ],
-    "lastRun": "2025-12-11T08:52:52.671Z"
+    "clickSelector": "#onetrust-accept-btn-handler",
+    "postInteractionWait": 800,
+    "lastRun": "2025-12-11T09:19:32.960Z"
   }
 ]

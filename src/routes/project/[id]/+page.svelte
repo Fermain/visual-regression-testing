@@ -10,13 +10,14 @@
 	import { formatDistanceToNow } from 'date-fns';
 
 	import { Button } from '$lib/components/ui/button';
-	import { Card } from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
+	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let isRunning = $state(false);
 	let runningCommand = $state<'reference' | 'test' | 'approve' | null>(null);
+	let formEl = $state<HTMLFormElement | null>(null);
 
 	let project = $derived(data.project);
 	let report = $derived(data.report);
@@ -24,25 +25,69 @@
 	let hasReference = $derived(data.hasReference);
 	let reportUrl = $derived(project ? `/report/${project.id}/html_report/index.html` : '');
 
-	function confirmReference(): boolean {
-		return confirm(
-			'Replace Existing Reference?\n\n' +
-			'This will replace the existing reference screenshots with new ones from the Canonical URL.\n\n' +
-			'Only do this if:\n' +
-			'• The original reference was broken or incorrect\n\n' +
-			'If you have valid test failures, use "Approve All Changes" instead to update the baseline.'
-		);
+	let referenceDialogOpen = $state(false);
+	let approveDialogOpen = $state(false);
+	let pendingCommand = $state<'reference' | 'approve' | null>(null);
+
+	function handleButtonClick(cmd: 'reference' | 'test' | 'approve') {
+		if (cmd === 'reference' && hasReference) {
+			pendingCommand = 'reference';
+			referenceDialogOpen = true;
+		} else if (cmd === 'approve') {
+			pendingCommand = 'approve';
+			approveDialogOpen = true;
+		} else {
+			submitCommand(cmd);
+		}
 	}
 
-	function confirmApprove(): boolean {
-		return confirm(
-			'Approve All Changes?\n\n' +
-			'This will set the current test screenshots as the new baseline reference.\n\n' +
-			'Only approve if you have reviewed the differences and confirmed that all visual changes are intentional and correct.\n\n' +
-			'This action cannot be undone.'
-		);
+	function submitCommand(cmd: string) {
+		if (!formEl) return;
+		const input = formEl.querySelector(`input[name="command"][value="${cmd}"]`) as HTMLInputElement;
+		if (input) {
+			input.checked = true;
+			formEl.requestSubmit();
+		}
+	}
+
+	function handleReferenceConfirm() {
+		if (pendingCommand === 'reference') {
+			submitCommand('reference');
+		}
+		pendingCommand = null;
+	}
+
+	function handleApproveConfirm() {
+		if (pendingCommand === 'approve') {
+			submitCommand('approve');
+		}
+		pendingCommand = null;
 	}
 </script>
+
+<ConfirmDialog
+	bind:open={referenceDialogOpen}
+	title="Replace Existing Reference?"
+	description="This will replace the existing reference screenshots with new ones from the Canonical URL.
+
+Only do this if the original reference was broken or incorrect.
+
+If you have valid test failures, use 'Approve All Changes' instead to update the baseline."
+	confirmText="Replace Reference"
+	onConfirm={handleReferenceConfirm}
+/>
+
+<ConfirmDialog
+	bind:open={approveDialogOpen}
+	title="Approve All Changes?"
+	description="This will set the current test screenshots as the new baseline reference.
+
+Only approve if you have reviewed the differences and confirmed that all visual changes are intentional and correct.
+
+This action cannot be undone."
+	confirmText="Approve Changes"
+	onConfirm={handleApproveConfirm}
+/>
 
 <div class="flex-1 flex flex-col overflow-hidden">
 	<!-- Actions Bar -->
@@ -51,36 +96,30 @@
 			<form
 				method="POST"
 				action="?/run"
-			use:enhance={({ formData, cancel }) => {
-				const cmd = formData.get('command') as 'reference' | 'test' | 'approve';
-				
-				if (cmd === 'reference' && hasReference && !confirmReference()) {
-					cancel();
-					return;
-				}
-				if (cmd === 'approve' && !confirmApprove()) {
-					cancel();
-					return;
-				}
-				
-				isRunning = true;
-				runningCommand = cmd;
-				return async ({ update }) => {
-					await update();
-					isRunning = false;
-					runningCommand = null;
-				};
-			}}
+				bind:this={formEl}
+				use:enhance={({ formData }) => {
+					const cmd = formData.get('command') as 'reference' | 'test' | 'approve';
+					isRunning = true;
+					runningCommand = cmd;
+					return async ({ update }) => {
+						await update();
+						isRunning = false;
+						runningCommand = null;
+					};
+				}}
 				class="flex items-center gap-2"
 			>
+				<input type="radio" name="command" value="reference" class="hidden" />
+				<input type="radio" name="command" value="test" class="hidden" />
+				<input type="radio" name="command" value="approve" class="hidden" />
+
 				<Button
-					type="submit"
-					name="command"
-					value="reference"
+					type="button"
 					disabled={isRunning}
 					variant="secondary"
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
+					onclick={() => handleButtonClick('reference')}
 				>
 					{#if runningCommand === 'reference'}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -91,12 +130,11 @@
 				</Button>
 
 				<Button
-					type="submit"
-					name="command"
-					value="test"
+					type="button"
 					disabled={isRunning}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
+					onclick={() => handleButtonClick('test')}
 				>
 					{#if runningCommand === 'test'}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -107,13 +145,12 @@
 				</Button>
 
 				<Button
-					type="submit"
-					name="command"
-					value="approve"
+					type="button"
 					disabled={isRunning}
 					variant="outline"
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50"
+					onclick={() => handleButtonClick('approve')}
 				>
 					{#if runningCommand === 'approve'}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />

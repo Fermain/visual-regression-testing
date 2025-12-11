@@ -24,13 +24,22 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 			console.warn(`Invalid URL combination: base=${project.candidateBaseUrl} path=${p}`, e);
 		}
 
-		return {
+		const scenario: Record<string, unknown> = {
 			label: p === '/' ? 'root' : p.replace(/\//g, '_'),
 			url,
 			referenceUrl,
 			selectors: ['document'],
 			misMatchThreshold: 0.1
 		};
+
+		if (project.clickSelector) {
+			scenario.clickSelector = project.clickSelector;
+		}
+		if (project.postInteractionWait) {
+			scenario.postInteractionWait = project.postInteractionWait;
+		}
+
+		return scenario;
 	});
 
 	const config = {

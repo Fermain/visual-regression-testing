@@ -1,5 +1,6 @@
 import * as db from '$lib/server/storage';
-import type { PageServerLoad } from './$types';
+import { redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
@@ -58,4 +59,15 @@ export const load: PageServerLoad = async ({ parent }) => {
 	recentRuns.sort((a, b) => new Date(b.lastRun).getTime() - new Date(a.lastRun).getTime());
 
 	return { projects, recentRuns };
+};
+
+export const actions: Actions = {
+	delete: async ({ request }) => {
+		const data = await request.formData();
+		const id = data.get('id') as string;
+		if (id) {
+			await db.deleteProject(id);
+		}
+		redirect(303, '/');
+	}
 };

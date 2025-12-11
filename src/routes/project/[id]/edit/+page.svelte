@@ -15,6 +15,7 @@
 		CardDescription
 	} from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
+	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -22,7 +23,23 @@
 	let canonicalBaseUrl = $state(data.project.canonicalBaseUrl);
 	let candidateBaseUrl = $state(data.project.candidateBaseUrl);
 	let paths = $state(data.project.paths.join('\n'));
+	let clickSelector = $state(data.project.clickSelector ?? '');
+	let postInteractionWait = $state(data.project.postInteractionWait ?? 500);
+
+	let deleteDialogOpen = $state(false);
+	let deleteFormEl = $state<HTMLFormElement | null>(null);
 </script>
+
+<ConfirmDialog
+	bind:open={deleteDialogOpen}
+	title="Delete Project"
+	description="Are you sure you want to delete this project? This will permanently remove all test data, references, and reports.
+
+This action cannot be undone."
+	confirmText="Delete Project"
+	variant="destructive"
+	onConfirm={() => deleteFormEl?.requestSubmit()}
+/>
 
 <div class="flex-1 overflow-auto p-6">
 	<form method="POST" action="?/update" use:enhance class="space-y-6">
@@ -96,6 +113,48 @@
 			</CardContent>
 		</Card>
 
+		<Card>
+			<CardHeader>
+				<CardTitle class="text-base">Automation</CardTitle>
+				<CardDescription>
+					Configure automatic interactions before capturing screenshots.
+				</CardDescription>
+			</CardHeader>
+			<CardContent class="space-y-4">
+				<div class="space-y-2">
+					<Label for="clickSelector">Click Selector</Label>
+					<Input
+						id="clickSelector"
+						name="clickSelector"
+						bind:value={clickSelector}
+						placeholder="#onetrust-accept-btn-handler"
+						class="font-mono text-sm"
+					/>
+					<p class="text-xs text-muted-foreground">
+						CSS selector to click before capture (e.g., cookie consent button)
+					</p>
+				</div>
+
+				<Separator />
+
+				<div class="space-y-2">
+					<Label for="postInteractionWait">Post-Interaction Wait (ms)</Label>
+					<Input
+						type="number"
+						id="postInteractionWait"
+						name="postInteractionWait"
+						bind:value={postInteractionWait}
+						min="0"
+						max="10000"
+						class="font-mono text-sm w-32"
+					/>
+					<p class="text-xs text-muted-foreground">
+						Time to wait after clicking before capturing (default: 500ms)
+					</p>
+				</div>
+			</CardContent>
+		</Card>
+
 		{#if form?.error}
 			<div class="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
 				{form.error}
@@ -116,15 +175,11 @@
 			<CardDescription>Permanently delete this project and all its test data.</CardDescription>
 		</CardHeader>
 		<CardContent>
-			<form method="POST" action="?/delete" use:enhance>
+			<form method="POST" action="?/delete" use:enhance bind:this={deleteFormEl}>
 				<Button
 					variant="destructive"
-					type="submit"
-					onclick={(e) => {
-						if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) {
-							e.preventDefault();
-						}
-					}}
+					type="button"
+					onclick={() => (deleteDialogOpen = true)}
 				>
 					<Trash2Icon class="h-4 w-4 mr-2" />
 					Delete Project
