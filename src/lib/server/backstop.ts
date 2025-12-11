@@ -19,16 +19,14 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 			referenceUrl = new URL(p, project.canonicalBaseUrl).toString();
 		} catch (e) {
 			console.warn(`Invalid URL combination: base=${project.candidateBaseUrl} path=${p}`, e);
-			// Fallback or skip? For now let's try to proceed, backstop might fail this scenario
 		}
 
 		return {
 			label: p === '/' ? 'root' : p.replace(/\//g, '_'),
 			url,
 			referenceUrl,
-			selectors: ['document'], // Default to document
+			selectors: ['document'],
 			misMatchThreshold: 0.1
-			// Add other default scenario options here
 		};
 	});
 
@@ -41,12 +39,12 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		paths: {
 			bitmaps_reference: path.join(dataDir, 'bitmaps_reference'),
 			bitmaps_test: path.join(dataDir, 'bitmaps_test'),
-			engine_scripts: path.resolve('data/engine_scripts'), // Use a shared folder for scripts
+			engine_scripts: path.resolve('data/engine_scripts'),
 			html_report: path.join(dataDir, 'html_report'),
 			ci_report: path.join(dataDir, 'ci_report'),
 			json_report: path.join(dataDir, 'json_report')
 		},
-		report: ['json', 'browser'], // Generate both. 'browser' generates the static HTML report.
+		report: ['json', 'browser'],
 		engine: 'puppeteer',
 		engineOptions: {
 			args: ['--no-sandbox']
@@ -54,16 +52,18 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		asyncCaptureLimit: 5,
 		asyncCompareLimit: 50,
 		debug: false,
-		debugWindow: false
+		debugWindow: false,
+		openReport: false
 	};
 
 	try {
-		// BackstopJS promise rejects on test failure (diffs found), which is "normal" for tests
 		await backstop(command, { config });
 		return { success: true };
 	} catch (err) {
-		// If it's a test failure (mismatch), it's not a system error.
-		console.error('Backstop run completed with errors (likely mismatches):', err);
-		return { success: false, error: err };
+		// BackstopJS rejects on test failure (mismatch found) - this is normal behavior
+		// Convert error to a serializable string for SvelteKit
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		console.error('Backstop run completed with errors (likely mismatches):', errorMessage);
+		return { success: false, error: errorMessage };
 	}
 }

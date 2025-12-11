@@ -62,6 +62,7 @@ export const actions: Actions = {
 		const result = await runBackstop(project, command);
 		console.log(`Finished ${command} for project ${project.id}. Success: ${result.success}`);
 
+		// result.error is already a string from runBackstop
 		return { success: result.success, command, error: result.error };
 	}
 };
