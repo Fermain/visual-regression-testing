@@ -4,10 +4,10 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { randomUUID } from 'node:crypto';
 
-export const load: PageServerLoad = async () => {
-	const projects = await db.getProjects();
+export const load: PageServerLoad = async ({ parent }) => {
+	const parentData = await parent();
 	const settings = await getSettings();
-	return { projects, settings };
+	return { projects: parentData.projects, settings };
 };
 
 export const actions: Actions = {

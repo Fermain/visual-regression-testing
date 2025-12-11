@@ -1,74 +1,48 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
-	import {
-		Plus,
-		Trash2,
-		Calendar,
-		LayoutGrid,
-		Monitor,
-		Smartphone,
-		Tablet,
-		Settings,
-		Laptop,
-		Tv,
-		Watch
-	} from 'lucide-svelte';
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
+	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
+	import MonitorIcon from '@lucide/svelte/icons/monitor';
+	import SmartphoneIcon from '@lucide/svelte/icons/smartphone';
+	import TabletIcon from '@lucide/svelte/icons/tablet';
+	import LaptopIcon from '@lucide/svelte/icons/laptop';
+	import TvIcon from '@lucide/svelte/icons/tv';
+	import WatchIcon from '@lucide/svelte/icons/watch';
 	import type { ViewportIcon } from '$lib/types';
 
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import {
-		Card,
-		CardContent,
-		CardHeader,
-		CardTitle,
-		CardDescription,
-		CardFooter
-	} from '$lib/components/ui/card';
+	import { Card, CardContent } from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import { formatDistanceToNow } from 'date-fns';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
-	const iconMap: Record<ViewportIcon, typeof Monitor> = {
-		monitor: Monitor,
-		laptop: Laptop,
-		tablet: Tablet,
-		smartphone: Smartphone,
-		tv: Tv,
-		watch: Watch
+	const iconMap: Record<ViewportIcon, typeof MonitorIcon> = {
+		monitor: MonitorIcon,
+		laptop: LaptopIcon,
+		tablet: TabletIcon,
+		smartphone: SmartphoneIcon,
+		tv: TvIcon,
+		watch: WatchIcon
 	};
 
 	function getViewportIcon(icon?: ViewportIcon) {
 		if (icon && iconMap[icon]) return iconMap[icon];
-		return Monitor;
+		return MonitorIcon;
 	}
 </script>
 
-<div class="container mx-auto max-w-5xl p-8 space-y-8">
-	<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-bold tracking-tight text-gray-900">Visual Regression Tests</h1>
-			<p class="text-muted-foreground">Manage and run your visual regression suites.</p>
-		</div>
-
-		<div class="flex items-center gap-3">
-			<a href="/settings">
-				<Button variant="outline" class="cursor-pointer">
-					<Settings class="h-4 w-4 mr-2" />
-					Settings
-				</Button>
-			</a>
-		</div>
-	</div>
-
+<div class="flex-1 overflow-auto p-6 space-y-6">
 	<!-- Viewport summary -->
 	<Card class="bg-muted/20 border-dashed">
 		<CardContent class="p-4 flex items-center justify-between">
 			<div class="flex items-center gap-4">
 				<span class="text-sm text-muted-foreground font-medium">Active Viewports:</span>
-				<div class="flex gap-2">
+				<div class="flex gap-2 flex-wrap">
 					{#each data.settings.viewports as viewport}
 						{@const Icon = getViewportIcon(viewport.icon)}
 						<Badge variant="secondary" class="font-normal">
@@ -86,33 +60,34 @@
 	</Card>
 
 	<!-- Create new project -->
-	<Card class="border-dashed shadow-sm bg-muted/30">
+	<Card id="new-project" class="border-dashed shadow-sm bg-muted/30">
 		<CardContent class="p-4 flex items-center gap-3">
 			<form method="POST" action="?/create" use:enhance class="flex w-full items-center gap-3">
 				<Input
 					type="text"
 					name="name"
 					placeholder="New Project Name"
-					class="flex-1 bg-white"
+					class="flex-1 bg-background"
 					required
 				/>
 				<Button type="submit" class="shrink-0 cursor-pointer">
-					<Plus class="h-4 w-4 mr-2" />
+					<PlusIcon class="h-4 w-4 mr-2" />
 					Create Project
 				</Button>
 			</form>
 		</CardContent>
 	</Card>
 
-	<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+	<!-- Projects grid -->
+	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 		{#each data.projects as project (project.id)}
 			<div
-				class="group relative flex flex-col justify-between rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-indigo-200"
+				class="group relative flex flex-col justify-between rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/50"
 			>
-				<div class="p-6 space-y-4">
-					<div class="space-y-2">
+				<div class="p-5 space-y-3">
+					<div class="space-y-1.5">
 						<h3
-							class="text-xl font-semibold leading-none tracking-tight group-hover:text-indigo-600 transition-colors"
+							class="text-lg font-semibold leading-none tracking-tight group-hover:text-primary transition-colors"
 						>
 							<a href="/project/{project.id}" class="focus:outline-none">
 								<span class="absolute inset-0" aria-hidden="true"></span>
@@ -120,34 +95,34 @@
 							</a>
 						</h3>
 						<div class="flex items-center gap-2 text-xs text-muted-foreground">
-							<LayoutGrid class="h-3 w-3" />
-							<span>{project.paths.length} paths</span>
+							<LayoutGridIcon class="h-3 w-3" />
+							<span>{project.paths.length} path{project.paths.length === 1 ? '' : 's'}</span>
 						</div>
 					</div>
 
 					<div class="flex flex-wrap gap-2">
 						{#if project.lastRun}
-							<Badge variant="secondary" class="font-normal">
-								<Calendar class="mr-1 h-3 w-3 text-muted-foreground" />
+							<Badge variant="secondary" class="font-normal text-xs">
+								<CalendarIcon class="mr-1 h-3 w-3 text-muted-foreground" />
 								{formatDistanceToNow(new Date(project.lastRun), { addSuffix: true })}
 							</Badge>
 						{:else}
-							<Badge variant="outline" class="text-muted-foreground font-normal border-dashed"
+							<Badge variant="outline" class="text-muted-foreground font-normal border-dashed text-xs"
 								>No runs yet</Badge
 							>
 						{/if}
 					</div>
 				</div>
 
-				<div class="p-6 pt-0 mt-auto flex justify-between items-center border-t bg-muted/10">
-					<div class="flex -space-x-2 overflow-hidden py-3">
+				<div class="px-5 py-3 mt-auto flex justify-between items-center border-t bg-muted/5">
+					<div class="flex -space-x-1.5 overflow-hidden">
 						{#each data.settings.viewports as viewport}
 							{@const Icon = getViewportIcon(viewport.icon)}
 							<div
-								class="inline-flex h-6 w-6 items-center justify-center rounded-full border bg-white text-gray-500 shadow-sm"
+								class="inline-flex h-5 w-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm"
 								title="{viewport.label} ({viewport.width}×{viewport.height})"
 							>
-								<Icon class="h-3 w-3" />
+								<Icon class="h-2.5 w-2.5" />
 							</div>
 						{/each}
 					</div>
@@ -166,9 +141,9 @@
 								type="submit"
 								variant="ghost"
 								size="icon"
-								class="h-8 w-8 text-muted-foreground hover:text-red-600 cursor-pointer"
+								class="h-7 w-7 text-muted-foreground hover:text-destructive cursor-pointer"
 							>
-								<Trash2 class="h-4 w-4" />
+								<Trash2Icon class="h-3.5 w-3.5" />
 							</Button>
 						</form>
 					</div>
@@ -179,11 +154,11 @@
 		{#if data.projects.length === 0}
 			<div class="col-span-full py-16 text-center rounded-xl border border-dashed bg-muted/10">
 				<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-					<LayoutGrid class="h-6 w-6 text-muted-foreground" />
+					<LayoutGridIcon class="h-6 w-6 text-muted-foreground" />
 				</div>
-				<h3 class="mt-4 text-lg font-semibold">No projects found</h3>
+				<h3 class="mt-4 text-lg font-semibold">No projects yet</h3>
 				<p class="mb-4 text-sm text-muted-foreground">
-					Get started by creating your first regression testing project above.
+					Create your first visual regression testing project above.
 				</p>
 			</div>
 		{/if}
