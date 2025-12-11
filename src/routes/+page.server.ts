@@ -1,40 +1,61 @@
 import * as db from '$lib/server/storage';
-import { getSettings } from '$lib/server/settings';
-import { fail, redirect } from '@sveltejs/kit';
-import type { Actions, PageServerLoad } from './$types';
-import { randomUUID } from 'node:crypto';
+import type { PageServerLoad } from './$types';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+
+interface TestResult {
+	projectId: string;
+	projectName: string;
+	lastRun: string;
+	totalTests: number;
+	passedTests: number;
+	failedTests: number;
+	tests: {
+		label: string;
+		viewport: string;
+		status: 'pass' | 'fail';
+		mismatch?: string;
+	}[];
+}
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
-	const settings = await getSettings();
-	return { projects: parentData.projects, settings };
-};
+	const projects = parentData.projects;
 
-export const actions: Actions = {
-	create: async ({ request }) => {
-		const data = await request.formData();
-		const name = data.get('name') as string;
+	// Load reports for all projects
+	const recentRuns: TestResult[] = [];
 
-		if (!name) {
-			return fail(400, { missing: true });
-		}
+	for (const project of projects) {
+		if (!project.lastRun) continue;
 
-		const newProject = {
-			id: randomUUID(),
-			name,
-			canonicalBaseUrl: '',
-			candidateBaseUrl: '',
-			paths: ['/']
-		};
+		try {
+			const reportPath = path.resolve(`data/projects/${project.id}/json_report/jsonReport.json`);
+			const reportData = await fs.readFile(reportPath, 'utf-8');
+			const report = JSON.parse(reportData);
 
-		await db.saveProject(newProject);
-		throw redirect(303, `/project/${newProject.id}`);
-	},
-	delete: async ({ request }) => {
-		const data = await request.formData();
-		const id = data.get('id') as string;
-		if (id) {
-			await db.deleteProject(id);
+			const tests = report.tests.map((t: { pair: { label: string; viewportLabel: string; diff?: { misMatchPercentage: string } }; status: string }) => ({
+				label: t.pair.label,
+				viewport: t.pair.viewportLabel,
+				status: t.status as 'pass' | 'fail',
+				mismatch: t.pair.diff?.misMatchPercentage
+			}));
+
+			recentRuns.push({
+				projectId: project.id,
+				projectName: project.name,
+				lastRun: project.lastRun,
+				totalTests: tests.length,
+				passedTests: tests.filter((t: { status: string }) => t.status === 'pass').length,
+				failedTests: tests.filter((t: { status: string }) => t.status === 'fail').length,
+				tests
+			});
+		} catch {
+			// No report for this project
 		}
 	}
+
+	// Sort by most recent first
+	recentRuns.sort((a, b) => new Date(b.lastRun).getTime() - new Date(a.lastRun).getTime());
+
+	return { projects, recentRuns };
 };

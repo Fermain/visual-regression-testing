@@ -18,41 +18,29 @@ export const load: PageServerLoad = async ({ params }) => {
 		// No report yet or error reading
 	}
 
-	return { project, report };
+	let hasReference = false;
+	try {
+		const refPath = path.resolve(`data/projects/${params.id}/bitmaps_reference`);
+		const files = await fs.readdir(refPath);
+		hasReference = files.some(f => f.endsWith('.png'));
+	} catch {
+		// No reference folder
+	}
+
+	return { project, report, hasReference };
 };
 
 export const actions: Actions = {
-	update: async ({ request, params }) => {
-		const data = await request.formData();
-		const project = await db.getProject(params.id);
-		if (!project) return fail(404, { message: 'Project not found' });
-
-		const name = data.get('name') as string;
-		const canonicalBaseUrl = data.get('canonicalBaseUrl') as string;
-		const candidateBaseUrl = data.get('candidateBaseUrl') as string;
-		const pathsStr = data.get('paths') as string;
-
-		project.name = name;
-		project.canonicalBaseUrl = canonicalBaseUrl;
-		project.candidateBaseUrl = candidateBaseUrl;
-		project.paths = pathsStr
-			.split('\n')
-			.map((p) => p.trim())
-			.filter((p) => p);
-
-		await db.saveProject(project);
-		return { success: true };
-	},
 	run: async ({ request, params }) => {
 		const data = await request.formData();
 		const command = data.get('command') as 'reference' | 'test' | 'approve';
 
 		if (!['reference', 'test', 'approve'].includes(command)) {
-			return fail(400, { message: 'Invalid command' });
+			return fail(400, { error: 'Invalid command' });
 		}
 
 		const project = await db.getProject(params.id);
-		if (!project) return fail(404, { message: 'Project not found' });
+		if (!project) return fail(404, { error: 'Project not found' });
 
 		// Save timestamp
 		project.lastRun = new Date().toISOString();
@@ -62,7 +50,6 @@ export const actions: Actions = {
 		const result = await runBackstop(project, command);
 		console.log(`Finished ${command} for project ${project.id}. Success: ${result.success}`);
 
-		// result.error is already a string from runBackstop
 		return { success: result.success, command, error: result.error };
 	}
 };

@@ -12,9 +12,25 @@
 	function getBreadcrumbs(pathname: string) {
 		if (pathname === '/') return [{ label: 'Dashboard', href: '/' }];
 		if (pathname === '/settings') return [{ label: 'Settings', href: '/settings' }];
+		if (pathname === '/project/new') {
+			return [
+				{ label: 'Dashboard', href: '/' },
+				{ label: 'New Project', href: pathname }
+			];
+		}
 		if (pathname.startsWith('/project/')) {
-			const projectId = pathname.split('/')[2];
+			const parts = pathname.split('/');
+			const projectId = parts[2];
 			const project = data.projects.find((p) => p.id === projectId);
+			const isEdit = parts[3] === 'edit';
+			
+			if (isEdit) {
+				return [
+					{ label: 'Dashboard', href: '/' },
+					{ label: project?.name ?? 'Project', href: `/project/${projectId}` },
+					{ label: 'Edit', href: pathname }
+				];
+			}
 			return [
 				{ label: 'Dashboard', href: '/' },
 				{ label: project?.name ?? 'Project', href: pathname }

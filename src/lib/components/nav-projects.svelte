@@ -73,7 +73,7 @@
 		<Sidebar.MenuItem>
 			<Sidebar.MenuButton class="text-sidebar-foreground/70">
 				{#snippet child({ props })}
-					<a href="/#new-project" {...props}>
+					<a href="/project/new" {...props}>
 						<PlusIcon />
 						<span>New Project</span>
 					</a>

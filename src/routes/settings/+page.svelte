@@ -94,7 +94,7 @@
 </script>
 
 <div class="flex-1 overflow-auto p-6">
-	<div class="max-w-3xl space-y-6">
+	<div class="space-y-6">
 		<Card>
 			<CardHeader>
 				<CardTitle>Viewports</CardTitle>
@@ -169,7 +169,7 @@
 											value={newIcon}
 											onValueChange={(v) => (newIcon = v as ViewportIcon)}
 										>
-											<Select.Trigger class="w-10 h-8 px-2">
+											<Select.Trigger class="w-auto h-8 px-2">
 												{@const NewIcon = getIconComponent(newIcon)}
 												<NewIcon class="h-4 w-4" />
 											</Select.Trigger>
@@ -203,7 +203,7 @@
 											type="number"
 											bind:value={newWidth}
 											min="100"
-											class="h-8 bg-background font-mono text-xs w-16"
+											class="h-8 bg-background font-mono text-xs w-20"
 										/>
 									</TableCell>
 									<TableCell class="py-2">
@@ -211,7 +211,7 @@
 											type="number"
 											bind:value={newHeight}
 											min="100"
-											class="h-8 bg-background font-mono text-xs w-16"
+											class="h-8 bg-background font-mono text-xs w-20"
 										/>
 									</TableCell>
 									<TableCell class="py-2">

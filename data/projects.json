@@ -1,10 +1,22 @@
 [
-	{
-		"id": "faa9eadf-43db-4856-9e21-11da9f6da58c",
-		"name": "Yoti",
-		"canonicalBaseUrl": "https://yoti.com/",
-		"candidateBaseUrl": "https://yoti.com/",
-		"paths": ["/"],
-		"lastRun": "2025-12-11T08:04:08.143Z"
-	}
+  {
+    "id": "faa9eadf-43db-4856-9e21-11da9f6da58c",
+    "name": "Yoti",
+    "canonicalBaseUrl": "https://yoti.com/",
+    "candidateBaseUrl": "https://yoti.com/",
+    "paths": [
+      "/"
+    ],
+    "lastRun": "2025-12-11T08:04:08.143Z"
+  },
+  {
+    "id": "8d300f8c-8309-4d46-ad47-3fa0e30d6c36",
+    "name": "Provemyage",
+    "canonicalBaseUrl": "https://www.provemyage.com/",
+    "candidateBaseUrl": "https://www.provemyage.com/",
+    "paths": [
+      "/"
+    ],
+    "lastRun": "2025-12-11T08:52:52.671Z"
+  }
 ]
