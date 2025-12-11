@@ -12,6 +12,7 @@
 	function getBreadcrumbs(pathname: string) {
 		if (pathname === '/') return [{ label: 'Tests', href: '/' }];
 		if (pathname === '/settings') return [{ label: 'Settings', href: '/settings' }];
+		if (pathname === '/help') return [{ label: 'Help', href: '/help' }];
 		if (pathname === '/project/new') {
 			return [
 				{ label: 'Tests', href: '/' },
