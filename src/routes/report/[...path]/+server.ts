@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, request }) => {
 	// This handler now serves everything under data/projects/{project-id}/...
 
 	if (!params.path) {
@@ -23,6 +23,14 @@ export const GET: RequestHandler = async ({ params }) => {
 		const stats = await fs.stat(requestedPath);
 		if (stats.isDirectory()) {
 			throw error(403, 'Directory access denied');
+		}
+
+		// Handle Conditional GET (304 Not Modified)
+		const lastModified = stats.mtime.toUTCString();
+		const ifModifiedSince = request.headers.get('if-modified-since');
+
+		if (ifModifiedSince === lastModified) {
+			return new Response(null, { status: 304 });
 		}
 
 		const file = await fs.readFile(requestedPath);
@@ -79,7 +87,8 @@ export const GET: RequestHandler = async ({ params }) => {
 		return new Response(file, {
 			headers: {
 				'Content-Type': contentType,
-				'Cache-Control': cacheControl
+				'Cache-Control': cacheControl,
+				'Last-Modified': lastModified
 			}
 		});
 	} catch (e) {
