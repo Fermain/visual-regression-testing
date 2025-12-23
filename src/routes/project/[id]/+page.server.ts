@@ -54,11 +54,15 @@ export const actions: Actions = {
 			console.log(`Finished ${command} for project ${project.id}. Success: ${result.success}`);
 
 			if (!result.success) {
-				return fail(500, {
-					success: false,
-					command,
-					error: result.error || 'Unknown error occurred during Backstop execution'
-				});
+				// If it's a test run, failure usually means mismatches, which is a valid state where we want to see the report.
+				// If it's a reference creation, failure is an actual error.
+				// In both cases, we return the result. We don't use fail(500) because that might be interpreted as a system crash.
+				// For reference creation errors, the UI will show the error message from the result object.
+				return { 
+					success: false, 
+					command, 
+					error: result.error || 'Backstop execution failed' 
+				};
 			}
 
 			return { success: result.success, command, error: result.error };
