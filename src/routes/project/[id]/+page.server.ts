@@ -19,37 +19,55 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	let hasReference = false;
+	let referenceImages: string[] = [];
 	try {
 		const refPath = path.resolve(`data/projects/${params.id}/bitmaps_reference`);
 		const files = await fs.readdir(refPath);
-		hasReference = files.some(f => f.endsWith('.png'));
+		referenceImages = files.filter(f => f.endsWith('.png'));
+		hasReference = referenceImages.length > 0;
 	} catch {
 		// No reference folder
 	}
 
-	return { project, report, hasReference };
+	return { project, report, hasReference, referenceImages };
 };
 
 export const actions: Actions = {
 	run: async ({ request, params }) => {
-		const data = await request.formData();
-		const command = data.get('command') as 'reference' | 'test' | 'approve';
+		try {
+			const data = await request.formData();
+			const command = data.get('command') as 'reference' | 'test' | 'approve';
 
-		if (!['reference', 'test', 'approve'].includes(command)) {
-			return fail(400, { error: 'Invalid command' });
+			if (!['reference', 'test', 'approve'].includes(command)) {
+				return fail(400, { error: 'Invalid command', success: false });
+			}
+
+			const project = await db.getProject(params.id);
+			if (!project) return fail(404, { error: 'Project not found', success: false });
+
+			// Save timestamp
+			project.lastRun = new Date().toISOString();
+			await db.saveProject(project);
+
+			console.log(`Starting ${command} for project ${project.id}...`);
+			const result = await runBackstop(project, command);
+			console.log(`Finished ${command} for project ${project.id}. Success: ${result.success}`);
+
+			if (!result.success) {
+				return fail(500, {
+					success: false,
+					command,
+					error: result.error || 'Unknown error occurred during Backstop execution'
+				});
+			}
+
+			return { success: result.success, command, error: result.error };
+		} catch (e) {
+			console.error('Unexpected error in run action:', e);
+			return fail(500, {
+				success: false,
+				error: e instanceof Error ? e.message : 'Internal Server Error'
+			});
 		}
-
-		const project = await db.getProject(params.id);
-		if (!project) return fail(404, { error: 'Project not found' });
-
-		// Save timestamp
-		project.lastRun = new Date().toISOString();
-		await db.saveProject(project);
-
-		console.log(`Starting ${command} for project ${project.id}...`);
-		const result = await runBackstop(project, command);
-		console.log(`Finished ${command} for project ${project.id}. Success: ${result.success}`);
-
-		return { success: result.success, command, error: result.error };
 	}
 };

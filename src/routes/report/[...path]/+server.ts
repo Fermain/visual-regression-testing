@@ -66,10 +66,20 @@ export const GET: RequestHandler = async ({ params }) => {
 				break;
 		}
 
+		// Cache Handling
+		let cacheControl = 'no-cache';
+		if (requestedPath.includes('bitmaps_test') && (ext === '.png' || ext === '.jpg' || ext === '.jpeg')) {
+			// Test images are immutable and heavy, cache them aggressively (1 year)
+			cacheControl = 'public, max-age=31536000, immutable';
+		} else if (requestedPath.includes('assets') || ext === '.js' || ext === '.css' || ext === '.woff' || ext === '.woff2' || ext === '.ttf') {
+			// Static assets can also be cached
+			cacheControl = 'public, max-age=86400'; // 1 day
+		}
+
 		return new Response(file, {
 			headers: {
 				'Content-Type': contentType,
-				'Cache-Control': 'no-cache' // Don't cache for now
+				'Cache-Control': cacheControl
 			}
 		});
 	} catch (e) {

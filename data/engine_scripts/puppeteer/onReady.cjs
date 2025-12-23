@@ -1,6 +1,5 @@
 module.exports = async (page, scenario, vp) => {
-	console.log('=== onReady script executing ===');
-	console.log('Scenario:', JSON.stringify(scenario, null, 2));
+	console.log('onReady: ' + scenario.label);
 
 	// Wait for the specified delay after page load
 	if (scenario.delay) {
@@ -14,16 +13,14 @@ module.exports = async (page, scenario, vp) => {
 		console.log(`Looking for clickSelector: ${selector}`);
 		
 		try {
-			// Wait for the element to appear (up to 10 seconds)
-			await page.waitForSelector(selector, { visible: true, timeout: 10000 });
+			// Wait for the element to appear (up to 5 seconds)
+			await page.waitForSelector(selector, { timeout: 5000 });
 			console.log(`Found ${selector}, clicking...`);
 			await page.click(selector);
-			console.log(`Clicked ${selector} successfully!`);
+			console.log(`Clicked ${selector}`);
 		} catch (e) {
 			console.log(`Could not find or click ${selector}: ${e.message}`);
 		}
-	} else {
-		console.log('No clickSelector defined in scenario');
 	}
 
 	// Wait after interaction before capturing
@@ -31,6 +28,4 @@ module.exports = async (page, scenario, vp) => {
 		console.log(`Waiting ${scenario.postInteractionWait}ms (postInteractionWait)...`);
 		await new Promise(resolve => setTimeout(resolve, scenario.postInteractionWait));
 	}
-
-	console.log('=== onReady script complete ===');
 };

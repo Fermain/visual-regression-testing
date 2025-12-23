@@ -201,32 +201,41 @@ This action cannot be undone."
 
 	<!-- Report Preview -->
 	<div class="flex-1 relative">
-		{#if runningCommand === 'reference'}
-			<div class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5">
-				<div class="rounded-full bg-muted p-6 mb-4">
-					<Loader2Icon class="h-10 w-10 opacity-40 animate-spin" />
-				</div>
-				<p class="font-medium text-lg">Creating new reference...</p>
-				<p class="text-sm max-w-md">
-					Capturing reference screenshots from the canonical URL. This may take a moment.
-				</p>
-			</div>
-		{:else if form?.command === 'reference' && form?.success}
-			<div class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5">
-				<div class="rounded-full bg-green-500/20 p-6 mb-4">
-					<EyeIcon class="h-10 w-10 text-green-500" />
-				</div>
-				<p class="font-medium text-lg text-green-500">Reference created successfully!</p>
-				<p class="text-sm max-w-md">
-					New reference screenshots have been captured. Run a test to compare against this baseline.
-				</p>
-				<Button class="mt-4 cursor-pointer" onclick={() => handleButtonClick('test')}>
-					<PlayIcon class="h-4 w-4 mr-2" />
-					Run Test Now
-				</Button>
-			</div>
-		{:else if hasReport}
+		{#if hasReport}
 			<iframe src={reportUrl} title="BackstopJS Report" class="absolute inset-0 w-full h-full border-0"></iframe>
+		{:else if hasReference && data.referenceImages?.length > 0}
+			<div class="absolute inset-0 overflow-y-auto p-8 bg-muted/5">
+				<div class="max-w-6xl mx-auto">
+					<div class="flex items-center justify-between mb-6">
+						<div>
+							<h3 class="text-lg font-medium text-foreground">Reference Images</h3>
+							<p class="text-sm text-muted-foreground">These are the baseline images used for comparison.</p>
+						</div>
+						<Button size="sm" onclick={() => handleButtonClick('test')}>
+							<PlayIcon class="mr-1.5 h-3.5 w-3.5" />
+							Run Test
+						</Button>
+					</div>
+					
+					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+						{#each data.referenceImages as image}
+							<div class="border rounded-lg bg-card overflow-hidden shadow-sm">
+								<div class="aspect-video relative bg-muted/20">
+									<img 
+										src="/report/{project.id}/bitmaps_reference/{image}" 
+										alt={image}
+										class="absolute inset-0 w-full h-full object-contain"
+										loading="lazy"
+									/>
+								</div>
+								<div class="p-3 border-t">
+									<p class="text-xs text-muted-foreground break-all font-mono">{image}</p>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
 		{:else}
 			<div class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5">
 				<div class="rounded-full bg-muted p-6 mb-4">
@@ -241,6 +250,11 @@ This action cannot be undone."
 						<SettingsIcon class="h-4 w-4 mr-2" />
 						Configure Project
 					</Button>
+				{/if}
+				{#if form?.command === 'reference' && form?.success}
+					<p class="text-sm text-green-500 mt-4">
+						Reference created! Now run "Run Test" to compare.
+					</p>
 				{/if}
 			</div>
 		{/if}

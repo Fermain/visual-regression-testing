@@ -2,7 +2,6 @@
 	import NavMain from './nav-main.svelte';
 	import NavProjects from './nav-projects.svelte';
 	import SidebarHeader from './sidebar-header.svelte';
-	import ThemeToggle from './theme-toggle.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import type { ComponentProps } from 'svelte';
 	import type { Project } from '$lib/types';
@@ -23,8 +22,5 @@
 		<NavMain />
 		<NavProjects {projects} />
 	</Sidebar.Content>
-	<Sidebar.Footer>
-		<ThemeToggle />
-	</Sidebar.Footer>
 	<Sidebar.Rail />
 </Sidebar.Root>

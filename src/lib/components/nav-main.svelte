@@ -2,7 +2,6 @@
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import HelpCircleIcon from '@lucide/svelte/icons/help-circle';
 	import { page } from '$app/stores';
 
 	const navItems = [
@@ -15,11 +14,6 @@
 			title: 'Settings',
 			url: '/settings',
 			icon: SettingsIcon
-		},
-		{
-			title: 'Help',
-			url: '/help',
-			icon: HelpCircleIcon
 		}
 	];
 

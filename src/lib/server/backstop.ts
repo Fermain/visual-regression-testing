@@ -71,8 +71,6 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		openReport: false
 	};
 
-	console.log('BackstopJS config:', JSON.stringify(config, null, 2));
-
 	try {
 		await backstop(command, { config });
 		return { success: true };
