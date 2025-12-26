@@ -11,5 +11,9 @@
       "height": 844,
       "icon": "smartphone"
     }
-  ]
+  ],
+  "asyncCaptureLimit": 1,
+  "asyncCompareLimit": 1,
+  "waitTimeout": 120000,
+  "gotoTimeout": 120000
 }

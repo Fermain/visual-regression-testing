@@ -32,6 +32,10 @@ export interface Project {
 
 export interface Settings {
 	viewports: Viewport[];
+	asyncCaptureLimit: number;
+	asyncCompareLimit: number;
+	waitTimeout: number;
+	gotoTimeout: number;
 }
 
 export const DEFAULT_VIEWPORTS: Viewport[] = [
@@ -40,5 +44,9 @@ export const DEFAULT_VIEWPORTS: Viewport[] = [
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
-	viewports: DEFAULT_VIEWPORTS
+	viewports: DEFAULT_VIEWPORTS,
+	asyncCaptureLimit: 2,
+	asyncCompareLimit: 10,
+	waitTimeout: 120000,
+	gotoTimeout: 120000
 };

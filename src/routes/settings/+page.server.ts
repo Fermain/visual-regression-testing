@@ -11,6 +11,10 @@ export const actions: Actions = {
 	save: async ({ request }) => {
 		const data = await request.formData();
 		const viewportsJson = data.get('viewports') as string;
+		const asyncCaptureLimit = Number(data.get('asyncCaptureLimit'));
+		const asyncCompareLimit = Number(data.get('asyncCompareLimit'));
+		const waitTimeout = Number(data.get('waitTimeout'));
+		const gotoTimeout = Number(data.get('gotoTimeout'));
 
 		try {
 			const viewports: Viewport[] = JSON.parse(viewportsJson);
@@ -29,10 +33,22 @@ export const actions: Actions = {
 				}
 			}
 
-			await saveSettings({ viewports });
+			// Validate other settings
+			if (asyncCaptureLimit < 1) return { success: false, error: 'Capture concurrency must be at least 1' };
+			if (asyncCompareLimit < 1) return { success: false, error: 'Compare concurrency must be at least 1' };
+			if (waitTimeout < 1000) return { success: false, error: 'Wait timeout must be at least 1000ms' };
+			if (gotoTimeout < 1000) return { success: false, error: 'Goto timeout must be at least 1000ms' };
+
+			await saveSettings({ 
+				viewports,
+				asyncCaptureLimit,
+				asyncCompareLimit,
+				waitTimeout,
+				gotoTimeout
+			});
 			return { success: true };
 		} catch (e) {
-			return { success: false, error: 'Invalid viewport data' };
+			return { success: false, error: 'Invalid data' };
 		}
 	}
 };

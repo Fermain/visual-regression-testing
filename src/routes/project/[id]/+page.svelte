@@ -213,12 +213,15 @@ This action cannot be undone."
 							Running...
 						</span>
 						{#if progress && progress.total > 0}
-							<span>{progress.total} items</span>
+							<span>{progress.completed} / {progress.total} items</span>
 						{/if}
 					</div>
 					{#if progress && progress.total > 0}
 						<div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-							<div class="h-full bg-blue-500 animate-progress origin-left"></div>
+							<div 
+								class="h-full bg-blue-500 transition-all duration-500 ease-out"
+								style="width: {(progress.completed / progress.total) * 100}%"
+							></div>
 						</div>
 					{/if}
 				</div>

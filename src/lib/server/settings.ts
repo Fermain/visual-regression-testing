@@ -14,7 +14,9 @@ export async function getSettings(): Promise<Settings> {
 	await ensureDataDir();
 	try {
 		const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
-		return JSON.parse(data);
+		const settings = JSON.parse(data);
+		// Merge with defaults to ensure all fields are present for existing settings files
+		return { ...DEFAULT_SETTINGS, ...settings };
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 			// Return defaults if file doesn't exist

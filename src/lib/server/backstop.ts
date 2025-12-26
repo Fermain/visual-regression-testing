@@ -74,12 +74,12 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		engineOptions: {
 			args: ['--no-sandbox'],
 			// Increase browser navigation timeout to 60s (default is 30s)
-			waitTimeout: 120000,
-			gotoTimeout: 120000,
+			waitTimeout: settings.waitTimeout ?? 120000,
+			gotoTimeout: settings.gotoTimeout ?? 120000,
 		},
 		// Limit concurrency to reduce load on the machine and network
-		asyncCaptureLimit: 2, // Reduced from 5 to 2
-		asyncCompareLimit: 10, // Reduced from 50 to 10
+		asyncCaptureLimit: settings.asyncCaptureLimit ?? 2, // Reduced from 5 to 2
+		asyncCompareLimit: settings.asyncCompareLimit ?? 10, // Reduced from 50 to 10
 		debug: false,
 		debugWindow: false,
 		openReport: false
@@ -113,8 +113,54 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		};
 		await saveProject(project);
 
+		// Helper to update progress
+		// We need to poll the bitmaps directory to guess progress
+		const bitmapsDir = command === 'reference' 
+			? path.join(dataDir, 'bitmaps_reference')
+			: path.join(dataDir, 'bitmaps_test');
+
+		const pollProgress = setInterval(async () => {
+			try {
+				const files = await fs.readdir(bitmapsDir).catch(() => []);
+				const pngs = files.filter(f => f.endsWith('.png')).length;
+				
+				// In test mode, we might see folders with timestamps, need to check latest
+				// But backstop usually puts them in timestamped folders inside bitmaps_test
+				// Let's just update based on what we find. 
+				// Actually, simpler heuristic:
+				// If reference: count pngs in bitmaps_reference
+				// If test: count pngs in latest timestamp folder in bitmaps_test
+				
+				let count = 0;
+				if (command === 'reference') {
+					count = pngs;
+				} else {
+					// Test mode
+					const subdirs = await fs.readdir(bitmapsDir).catch(() => []);
+					// Filter for timestamp-like directories (numeric)
+					const timestampDirs = subdirs.filter(d => /^\d+$/.test(d)).sort().reverse();
+					if (timestampDirs.length > 0) {
+						const latestDir = path.join(bitmapsDir, timestampDirs[0]);
+						const latestFiles = await fs.readdir(latestDir).catch(() => []);
+						count = latestFiles.filter(f => f.endsWith('.png')).length;
+					}
+				}
+
+				const { getProject, saveProject } = await import('$lib/server/storage');
+				const currentProject = await getProject(project.id);
+				if (currentProject && currentProject.progress) {
+					currentProject.progress.completed = count;
+					currentProject.progress.current = `Processed ${count} of ${currentProject.progress.total}`;
+					await saveProject(currentProject);
+				}
+			} catch (e) {
+				// Ignore polling errors
+			}
+		}, 2000);
+
 		await backstop(command, { config });
 		
+		clearInterval(pollProgress);
 		return { success: true };
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : String(err);
