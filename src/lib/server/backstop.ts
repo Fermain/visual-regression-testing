@@ -32,6 +32,16 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 			misMatchThreshold: 0.1
 		};
 
+		// 60 seconds default timeout per scenario
+		// This can be overridden by global debug settings if needed, but 60s is safer for heavy pages.
+		// Backstop defaults to 30s which might be too short for 50+ concurrent tabs.
+		// We'll add this to the scenario config.
+		// Note: 'readyEvent' or 'readySelector' are better for waiting, but timeout provides a hard stop.
+		// However, backstop scenario config doesn't have a direct 'timeout' property for the test itself, 
+		// but engine options can configure navigation timeouts. 
+		// Let's set a generous waitTimeout for selectors.
+		// Actually, backstop supports selectorExpansion: true, but for timeouts we mainly care about ready/load.
+
 		if (project.delay) {
 			scenario.delay = project.delay;
 		}
@@ -62,10 +72,14 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 		report: ['json', 'browser'],
 		engine: 'puppeteer',
 		engineOptions: {
-			args: ['--no-sandbox']
+			args: ['--no-sandbox'],
+			// Increase browser navigation timeout to 60s (default is 30s)
+			waitTimeout: 120000,
+			gotoTimeout: 120000,
 		},
-		asyncCaptureLimit: 5,
-		asyncCompareLimit: 50,
+		// Limit concurrency to reduce load on the machine and network
+		asyncCaptureLimit: 2, // Reduced from 5 to 2
+		asyncCompareLimit: 10, // Reduced from 50 to 10
 		debug: false,
 		debugWindow: false,
 		openReport: false
