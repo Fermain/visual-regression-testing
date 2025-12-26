@@ -29,6 +29,7 @@
 	let isRunning = $state(false);
 	let runningCommand = $state<'reference' | 'test' | 'approve' | null>(null);
 	let pollInterval: ReturnType<typeof setInterval>;
+	let progress = $derived(project.progress);
 
 	// Sync local running state with server status
 	$effect(() => {
@@ -195,10 +196,17 @@ This action cannot be undone."
 			</form>
 
 			{#if isRunning}
-				<Badge variant="outline" class="animate-pulse border-blue-500/50 text-blue-400">
-					<Loader2Icon class="h-3 w-3 mr-1 animate-spin" />
-					Running...
-				</Badge>
+				<div class="flex items-center gap-3">
+					<Badge variant="outline" class="animate-pulse border-blue-500/50 text-blue-400">
+						<Loader2Icon class="h-3 w-3 mr-1 animate-spin" />
+						Running...
+					</Badge>
+					{#if progress && progress.total > 0}
+						<span class="text-xs text-muted-foreground tabular-nums">
+							Processing {progress.total} screenshots...
+						</span>
+					{/if}
+				</div>
 			{/if}
 
 			{#if project.lastResult && !isRunning}

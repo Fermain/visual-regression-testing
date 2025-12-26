@@ -23,6 +23,11 @@ export interface Project {
 		command: 'reference' | 'test' | 'approve';
 		error?: string;
 	};
+	progress?: {
+		total: number;
+		completed: number;
+		current: string;
+	};
 }
 
 export interface Settings {

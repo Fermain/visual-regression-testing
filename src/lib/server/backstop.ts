@@ -86,7 +86,25 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 	};
 
 	try {
+		// Since BackstopJS doesn't expose a progress event directly in its public API easily,
+		// we can at least simulate start/end or use the fact that we know the total scenarios.
+		// For now, we will just rely on the running state.
+		// A more complex implementation would hook into stdout or custom engine scripts to write progress to DB.
+		// Let's at least initialize progress.
+		
+		// We can't easily get real-time progress from Backstop without parsing stdout or using a custom reporter.
+		// But we can set the total count so the UI knows how much work is expected.
+		// We'll update the project with the total count.
+		const { saveProject } = await import('$lib/server/storage');
+		project.progress = {
+			total: scenarios.length * settings.viewports.length, // Total screenshots = paths * viewports
+			completed: 0,
+			current: 'Starting...'
+		};
+		await saveProject(project);
+
 		await backstop(command, { config });
+		
 		return { success: true };
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : String(err);
