@@ -31,6 +31,15 @@
 	let pollInterval: ReturnType<typeof setInterval>;
 	let progress = $derived(project.progress);
 
+	// Report Stats
+	let reportStats = $derived.by(() => {
+		if (!report || !report.tests) return null;
+		const total = report.tests.length;
+		const failed = report.tests.filter((t: any) => t.status === 'fail').length;
+		const passed = report.tests.filter((t: any) => t.status === 'pass').length;
+		return { total, failed, passed };
+	});
+
 	// Sync local running state with server status
 	$effect(() => {
 		if (project.status === 'running') {
@@ -150,7 +159,7 @@ This action cannot be undone."
 				<Button
 					type="button"
 					disabled={isRunning}
-					variant="secondary"
+					variant={!hasReference ? "default" : "secondary"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
 					onclick={() => handleButtonClick('reference')}
@@ -165,7 +174,8 @@ This action cannot be undone."
 
 				<Button
 					type="button"
-					disabled={isRunning}
+					disabled={isRunning || !hasReference}
+					variant={hasReference && (!hasReport || (reportStats?.passed === reportStats?.total)) ? "default" : "secondary"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
 					onclick={() => handleButtonClick('test')}
@@ -180,8 +190,8 @@ This action cannot be undone."
 
 				<Button
 					type="button"
-					disabled={isRunning}
-					variant="outline"
+					disabled={isRunning || !hasReport || reportStats?.failed === 0}
+					variant={reportStats?.failed > 0 ? "default" : "outline"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50"
 					onclick={() => handleButtonClick('approve')}
@@ -196,20 +206,25 @@ This action cannot be undone."
 			</form>
 
 			{#if isRunning}
-				<div class="flex items-center gap-3">
-					<Badge variant="outline" class="animate-pulse border-blue-500/50 text-blue-400">
-						<Loader2Icon class="h-3 w-3 mr-1 animate-spin" />
-						Running...
-					</Badge>
-					{#if progress && progress.total > 0}
-						<span class="text-xs text-muted-foreground tabular-nums">
-							Processing {progress.total} screenshots...
+				<div class="flex flex-col gap-1 min-w-[200px]">
+					<div class="flex items-center justify-between text-xs text-muted-foreground">
+						<span class="flex items-center">
+							<Loader2Icon class="h-3 w-3 mr-1 animate-spin" />
+							Running...
 						</span>
+						{#if progress && progress.total > 0}
+							<span>{progress.total} items</span>
+						{/if}
+					</div>
+					{#if progress && progress.total > 0}
+						<div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+							<div class="h-full bg-blue-500 animate-progress origin-left"></div>
+						</div>
 					{/if}
 				</div>
 			{/if}
 
-			{#if project.lastResult && !isRunning}
+			{#if project.lastResult && !isRunning && !reportStats}
 				{#if project.lastResult.success}
 					<Badge variant="outline" class="text-xs border-green-500/50 text-green-500">
 						{project.lastResult.command} completed
@@ -219,6 +234,19 @@ This action cannot be undone."
 						Error: {project.lastResult.error || 'Failed'}
 					</Badge>
 				{/if}
+			{/if}
+
+			{#if reportStats && !isRunning}
+				<div class="flex items-center gap-2 text-sm">
+					<Badge variant={reportStats.failed > 0 ? "destructive" : "default"} class={reportStats.failed === 0 ? "bg-green-600 hover:bg-green-700" : ""}>
+						{reportStats.passed} Passed
+					</Badge>
+					{#if reportStats.failed > 0}
+						<Badge variant="destructive">
+							{reportStats.failed} Failed
+						</Badge>
+					{/if}
+				</div>
 			{/if}
 		</div>
 
