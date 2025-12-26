@@ -13,17 +13,49 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 
+	import { invalidateAll } from '$app/navigation';
+	import { onDestroy } from 'svelte';
+
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let isRunning = $state(false);
-	let runningCommand = $state<'reference' | 'test' | 'approve' | null>(null);
-	let formEl = $state<HTMLFormElement | null>(null);
-
+	// Derived state from project data
 	let project = $derived(data.project);
 	let report = $derived(data.report);
 	let hasReport = $derived(report !== null);
 	let hasReference = $derived(data.hasReference);
 	let reportUrl = $derived(project ? `/report/${project.id}/html_report/index.html` : '');
+
+	// Status management
+	let isRunning = $state(false);
+	let runningCommand = $state<'reference' | 'test' | 'approve' | null>(null);
+	let pollInterval: ReturnType<typeof setInterval>;
+
+	// Sync local running state with server status
+	$effect(() => {
+		if (project.status === 'running') {
+			isRunning = true;
+			// Start polling if not already polling
+			if (!pollInterval) {
+				pollInterval = setInterval(() => {
+					invalidateAll();
+				}, 2000);
+			}
+		} else {
+			isRunning = false;
+			runningCommand = null;
+			if (pollInterval) {
+				clearInterval(pollInterval);
+				// @ts-ignore
+				pollInterval = undefined;
+			}
+		}
+	});
+
+	onDestroy(() => {
+		if (pollInterval) clearInterval(pollInterval);
+	});
+
+	let formEl = $state<HTMLFormElement | null>(null);
 
 	let referenceDialogOpen = $state(false);
 	let approveDialogOpen = $state(false);
@@ -99,12 +131,13 @@ This action cannot be undone."
 				bind:this={formEl}
 				use:enhance={({ formData }) => {
 					const cmd = formData.get('command') as 'reference' | 'test' | 'approve';
+					// Optimistic UI update
 					isRunning = true;
 					runningCommand = cmd;
+					
 					return async ({ update }) => {
 						await update();
-						isRunning = false;
-						runningCommand = null;
+						// We rely on polling for the actual completion state
 					};
 				}}
 				class="flex items-center gap-2"
@@ -121,7 +154,7 @@ This action cannot be undone."
 					class="cursor-pointer disabled:cursor-not-allowed"
 					onclick={() => handleButtonClick('reference')}
 				>
-					{#if runningCommand === 'reference'}
+					{#if runningCommand === 'reference' || (project.status === 'running' && !runningCommand)}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 					{:else}
 						<EyeIcon class="mr-1.5 h-3.5 w-3.5" />
@@ -136,7 +169,7 @@ This action cannot be undone."
 					class="cursor-pointer disabled:cursor-not-allowed"
 					onclick={() => handleButtonClick('test')}
 				>
-					{#if runningCommand === 'test'}
+					{#if runningCommand === 'test' || (project.status === 'running' && !runningCommand)}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 					{:else}
 						<PlayIcon class="mr-1.5 h-3.5 w-3.5" />
@@ -152,7 +185,7 @@ This action cannot be undone."
 					class="cursor-pointer disabled:cursor-not-allowed hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50"
 					onclick={() => handleButtonClick('approve')}
 				>
-					{#if runningCommand === 'approve'}
+					{#if runningCommand === 'approve' || (project.status === 'running' && !runningCommand)}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 					{:else}
 						<FileCheckIcon class="mr-1.5 h-3.5 w-3.5" />
@@ -168,15 +201,16 @@ This action cannot be undone."
 				</Badge>
 			{/if}
 
-			{#if form?.success === false}
-				<Badge variant="destructive" class="text-xs">
-					Error: {form.error || 'Failed'}
-				</Badge>
-			{/if}
-			{#if form?.success === true}
-				<Badge variant="outline" class="text-xs border-green-500/50 text-green-500">
-					{form.command} completed
-				</Badge>
+			{#if project.lastResult && !isRunning}
+				{#if project.lastResult.success}
+					<Badge variant="outline" class="text-xs border-green-500/50 text-green-500">
+						{project.lastResult.command} completed
+					</Badge>
+				{:else}
+					<Badge variant="destructive" class="text-xs">
+						Error: {project.lastResult.error || 'Failed'}
+					</Badge>
+				{/if}
 			{/if}
 		</div>
 

@@ -17,6 +17,12 @@ export interface Project {
 	clickSelector?: string;
 	postInteractionWait?: number;
 	lastRun?: string;
+	status?: 'idle' | 'running';
+	lastResult?: {
+		success: boolean;
+		command: 'reference' | 'test' | 'approve';
+		error?: string;
+	};
 }
 
 export interface Settings {

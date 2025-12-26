@@ -45,29 +45,62 @@ export const actions: Actions = {
 			const project = await db.getProject(params.id);
 			if (!project) return fail(404, { error: 'Project not found', success: false });
 
-			// Save timestamp
+			if (project.status === 'running') {
+				return fail(409, { error: 'Test is already running', success: false });
+			}
+
+			// Update status to running
+			project.status = 'running';
 			project.lastRun = new Date().toISOString();
 			await db.saveProject(project);
 
 			console.log(`Starting ${command} for project ${project.id}...`);
-			const result = await runBackstop(project, command);
-			console.log(`Finished ${command} for project ${project.id}. Success: ${result.success}`);
 
-			if (!result.success) {
-				// If it's a test run, failure usually means mismatches, which is a valid state where we want to see the report.
-				// If it's a reference creation, failure is an actual error.
-				// In both cases, we return the result. We don't use fail(500) because that might be interpreted as a system crash.
-				// For reference creation errors, the UI will show the error message from the result object.
-				return { 
-					success: false, 
-					command, 
-					error: result.error || 'Backstop execution failed' 
-				};
-			}
+			// Run Backstop in the background (fire and forget)
+			(async () => {
+				try {
+					const result = await runBackstop(project, command);
+					
+					// Re-fetch project to get latest state (in case of other updates)
+					const p = await db.getProject(params.id);
+					if (p) {
+						p.status = 'idle';
+						p.lastResult = {
+							success: result.success,
+							command,
+							error: result.error
+						};
+						await db.saveProject(p);
+						console.log(`Finished ${command} for project ${project.id}. Success: ${result.success}`);
+					}
+				} catch (e) {
+					console.error('Background backstop execution failed:', e);
+					const p = await db.getProject(params.id);
+					if (p) {
+						p.status = 'idle';
+						p.lastResult = {
+							success: false,
+							command,
+							error: e instanceof Error ? e.message : String(e)
+						};
+						await db.saveProject(p);
+					}
+				}
+			})();
 
-			return { success: result.success, command, error: result.error };
+			// Return immediately indicating the process started
+			return { success: true, command, status: 'running' };
 		} catch (e) {
 			console.error('Unexpected error in run action:', e);
+			// If we fail here, we should try to reset the project status if we set it
+			try {
+				const project = await db.getProject(params.id);
+				if (project && project.status === 'running') {
+					project.status = 'idle';
+					await db.saveProject(project);
+				}
+			} catch { /* ignore */ }
+
 			return fail(500, {
 				success: false,
 				error: e instanceof Error ? e.message : 'Internal Server Error'
