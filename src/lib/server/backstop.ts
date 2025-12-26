@@ -86,6 +86,16 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 	};
 
 	try {
+		// Clean up previous report before running
+		if (command === 'test') {
+			try {
+				await fs.rm(path.join(dataDir, 'json_report'), { recursive: true, force: true });
+				await fs.rm(path.join(dataDir, 'html_report'), { recursive: true, force: true });
+			} catch (e) {
+				console.warn('Failed to clean up previous report:', e);
+			}
+		}
+
 		// Since BackstopJS doesn't expose a progress event directly in its public API easily,
 		// we can at least simulate start/end or use the fact that we know the total scenarios.
 		// For now, we will just rely on the running state.
