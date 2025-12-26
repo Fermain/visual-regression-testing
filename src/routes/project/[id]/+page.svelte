@@ -12,6 +12,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+	import * as Dialog from '$lib/components/ui/dialog';
 
 	import { invalidateAll } from '$app/navigation';
 	import { onDestroy } from 'svelte';
@@ -70,6 +71,15 @@
 	let referenceDialogOpen = $state(false);
 	let approveDialogOpen = $state(false);
 	let pendingCommand = $state<'reference' | 'approve' | null>(null);
+
+	// Lightbox state
+	let lightboxOpen = $state(false);
+	let lightboxImage = $state<string | null>(null);
+
+	function openLightbox(image: string) {
+		lightboxImage = image;
+		lightboxOpen = true;
+	}
 
 	function handleButtonClick(cmd: 'reference' | 'test' | 'approve') {
 		if (cmd === 'reference' && hasReference) {
@@ -130,6 +140,26 @@ This action cannot be undone."
 	confirmText="Approve Changes"
 	onConfirm={handleApproveConfirm}
 />
+
+<!-- Lightbox -->
+<Dialog.Root bind:open={lightboxOpen}>
+	<Dialog.Content class="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-transparent border-0 shadow-none">
+		{#if lightboxImage}
+			<div class="relative w-full h-full flex items-center justify-center">
+				<img 
+					src="/report/{project.id}/bitmaps_reference/{lightboxImage}" 
+					alt={lightboxImage}
+					class="max-w-full max-h-[85vh] object-contain rounded-md shadow-2xl"
+				/>
+				<div class="absolute bottom-4 left-0 right-0 text-center">
+					<Badge variant="secondary" class="bg-black/50 text-white hover:bg-black/70 backdrop-blur-sm border-white/10">
+						{lightboxImage}
+					</Badge>
+				</div>
+			</div>
+		{/if}
+	</Dialog.Content>
+</Dialog.Root>
 
 <div class="flex-1 flex flex-col overflow-hidden">
 	<!-- Actions Bar -->
@@ -292,17 +322,27 @@ This action cannot be undone."
 					
 					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 						{#each data.referenceImages as image}
-							<div class="border rounded-lg bg-card overflow-hidden shadow-sm">
-								<div class="aspect-video relative bg-muted/20">
+							<div class="border rounded-lg bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div 
+									class="aspect-video relative bg-muted/20 cursor-zoom-in group"
+									onclick={() => openLightbox(image)}
+								>
 									<img 
 										src="/report/{project.id}/bitmaps_reference/{image}" 
 										alt={image}
-										class="absolute inset-0 w-full h-full object-contain"
+										class="absolute inset-0 w-full h-full object-contain p-2"
 										loading="lazy"
 									/>
+									<div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+										<div class="bg-background/80 backdrop-blur-sm rounded-full p-2 text-foreground shadow-sm">
+											<EyeIcon class="w-5 h-5" />
+										</div>
+									</div>
 								</div>
-								<div class="p-3 border-t">
-									<p class="text-xs text-muted-foreground break-all font-mono">{image}</p>
+								<div class="p-3 border-t bg-muted/5">
+									<p class="text-xs text-muted-foreground break-all font-mono" title={image}>{image}</p>
 								</div>
 							</div>
 						{/each}
