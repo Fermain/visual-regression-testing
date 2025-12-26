@@ -13,6 +13,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import XIcon from '@lucide/svelte/icons/x';
 
 	import { invalidateAll } from '$app/navigation';
 	import { onDestroy } from 'svelte';
@@ -143,21 +144,35 @@ This action cannot be undone."
 
 <!-- Lightbox -->
 <Dialog.Root bind:open={lightboxOpen}>
-	<Dialog.Content class="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-transparent border-0 shadow-none">
-		{#if lightboxImage}
-			<div class="relative w-full h-full flex items-center justify-center">
-				<img 
-					src="/report/{project.id}/bitmaps_reference/{lightboxImage}" 
-					alt={lightboxImage}
-					class="max-w-full max-h-[85vh] object-contain rounded-md shadow-2xl"
-				/>
-				<div class="absolute bottom-4 left-0 right-0 text-center">
-					<Badge variant="secondary" class="bg-black/50 text-white hover:bg-black/70 backdrop-blur-sm border-white/10">
-						{lightboxImage}
-					</Badge>
-				</div>
+	<Dialog.Content class="max-w-[95vw] w-auto h-[95vh] p-0 overflow-hidden bg-transparent border-0 shadow-none flex flex-col items-center justify-center outline-none">
+		<div class="relative w-full h-full flex flex-col items-center bg-black/80 backdrop-blur-sm rounded-lg overflow-hidden border border-white/10">
+			<!-- Header / Close area -->
+			<div class="absolute top-4 right-4 z-50">
+				<Dialog.Close class="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors">
+					<XIcon class="w-6 h-6" />
+				</Dialog.Close>
 			</div>
-		{/if}
+
+			<!-- Image Container -->
+			<div class="flex-1 w-full overflow-auto p-8 flex items-start justify-center">
+				{#if lightboxImage}
+					<img 
+						src="/report/{project.id}/bitmaps_reference/{lightboxImage}" 
+						alt={lightboxImage}
+						class="max-w-full h-auto object-contain shadow-2xl rounded-sm"
+					/>
+				{/if}
+			</div>
+
+			<!-- Footer -->
+			{#if lightboxImage}
+				<div class="w-full p-4 bg-black/50 backdrop-blur-md border-t border-white/10 text-center shrink-0 z-10">
+					<p class="text-white/90 font-mono text-sm break-all">
+						{lightboxImage}
+					</p>
+				</div>
+			{/if}
+		</div>
 	</Dialog.Content>
 </Dialog.Root>
 

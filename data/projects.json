@@ -10,12 +10,12 @@
     "delay": 0,
     "clickSelector": "#onetrust-accept-btn-handler",
     "postInteractionWait": 500,
-    "lastRun": "2025-12-26T14:31:05.166Z",
+    "lastRun": "2025-12-26T16:50:43.528Z",
     "status": "idle",
     "progress": {
       "total": 2,
-      "completed": 0,
-      "current": "Starting..."
+      "completed": 2,
+      "current": "Processed 2 of 2"
     },
     "lastResult": {
       "success": true,
