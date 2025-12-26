@@ -87,7 +87,7 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 
 	try {
 		// Clean up previous report before running
-		if (command === 'test') {
+		if (command === 'test' || command === 'reference') {
 			try {
 				await fs.rm(path.join(dataDir, 'json_report'), { recursive: true, force: true });
 				await fs.rm(path.join(dataDir, 'html_report'), { recursive: true, force: true });
