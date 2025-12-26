@@ -1,7 +1,7 @@
 [
   {
-    "id": "f89d506f-5a0e-4ec7-a836-fcc2f6da74d4",
-    "name": "Yoti Main Pages",
+    "id": "e8674cc0-414f-461a-874a-58215342e3ff",
+    "name": "Yoti main pages",
     "canonicalBaseUrl": "https://www.yoti.com/",
     "candidateBaseUrl": "https://yoti.wordpress-dev.infra.yoti.com/",
     "paths": [
@@ -54,9 +54,9 @@
       "/yoti-foundation",
       "/404.html"
     ],
-    "delay": 1000,
+    "delay": 0,
     "clickSelector": "#onetrust-accept-btn-handler",
-    "postInteractionWait": 5000,
-    "lastRun": "2025-12-26T10:44:57.568Z"
+    "postInteractionWait": 500,
+    "lastRun": "2025-12-26T10:50:04.269Z"
   }
 ]
