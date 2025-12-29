@@ -21,12 +21,15 @@ module.exports = async (page, scenario) => {
 		await new Promise((r) => setTimeout(r, scenario.postInteractionWait));
 	}
 
-	// Force lazy images to load
-	console.log('Forcing lazy images to load...');
-	const imageInfo = await page.evaluate(() => {
+	// Force lazy media (images + video) to load
+	console.log('Forcing lazy media to load...');
+	const mediaInfo = await page.evaluate(() => {
 		// 1. Remove native lazy loading
 		document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
 			img.removeAttribute('loading');
+		});
+		document.querySelectorAll('video[loading="lazy"]').forEach((vid) => {
+			vid.removeAttribute('loading');
 		});
 
 		// 2. Handle common lazy-load patterns (data-src, data-lazy-src, etc.)
@@ -34,6 +37,12 @@ module.exports = async (page, scenario) => {
 			const lazySrc = img.dataset.src || img.dataset.lazySrc || img.dataset.original;
 			if (lazySrc && (!img.src || img.src.includes('data:') || img.src.includes('placeholder'))) {
 				img.src = lazySrc;
+			}
+		});
+		document.querySelectorAll('video[data-src], video[data-lazy-src], video[data-original]').forEach((vid) => {
+			const lazySrc = vid.dataset.src || vid.dataset.lazySrc || vid.dataset.original;
+			if (lazySrc && (!vid.src || vid.src === '')) {
+				vid.src = lazySrc;
 			}
 		});
 
@@ -58,24 +67,53 @@ module.exports = async (page, scenario) => {
 			img.scrollIntoView({ block: 'center', behavior: 'instant' });
 		});
 
+		// 6. Nudge videos to load first frame and stop autoplay
+		const videos = document.querySelectorAll('video');
+		videos.forEach((vid) => {
+			vid.autoplay = false;
+			vid.removeAttribute('autoplay');
+			vid.preload = 'auto';
+			try {
+				vid.pause();
+				vid.currentTime = 0;
+			} catch {}
+			vid.preload = 'auto';
+			try {
+				vid.muted = true;
+				const playPromise = vid.play();
+				if (playPromise && typeof playPromise.then === 'function') {
+					playPromise.then(() => {
+						vid.pause();
+						vid.currentTime = 0;
+					}).catch(() => {
+						vid.load();
+					});
+				}
+			} catch {
+				vid.load();
+			}
+		});
+
 		// 6. Return to top
 		window.scrollTo(0, 0);
 
 		return {
 			total: images.length,
 			withDataSrc: document.querySelectorAll('img[data-src]').length,
-			withLazyLoading: document.querySelectorAll('img[loading="lazy"]').length
+			withLazyLoading: document.querySelectorAll('img[loading="lazy"]').length,
+			videos: videos.length
 		};
 	});
-	console.log('Image info:', JSON.stringify(imageInfo));
+	console.log('Media info:', JSON.stringify(mediaInfo));
 
-	// Wait for images to load after forcing
-	console.log('Waiting for images to load...');
+	// Wait for media to load after forcing
+	console.log('Waiting for media to load...');
 	await page.evaluate(() => {
 		return new Promise((resolve) => {
 			const images = Array.from(document.querySelectorAll('img'));
+			const videos = Array.from(document.querySelectorAll('video'));
 			let loaded = 0;
-			const total = images.length;
+			const total = images.length + videos.length;
 
 			if (total === 0) {
 				resolve();
@@ -96,9 +134,19 @@ module.exports = async (page, scenario) => {
 				}
 			});
 
-			// Timeout after 10 seconds
-			setTimeout(resolve, 10000);
+			videos.forEach((vid) => {
+				const done = () => checkDone();
+				if (vid.readyState >= 2) {
+					checkDone();
+				} else {
+					vid.addEventListener('loadeddata', done, { once: true });
+					vid.addEventListener('error', done, { once: true });
+				}
+			});
+
+			// Timeout after 12 seconds
+			setTimeout(resolve, 12000);
 		});
 	});
-	console.log('Image loading complete.');
+	console.log('Media loading complete.');
 };
