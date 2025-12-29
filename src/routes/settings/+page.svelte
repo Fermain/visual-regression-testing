@@ -27,17 +27,25 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let viewports = $state<Viewport[]>([...data.settings.viewports]);
+	let viewports = $state<Viewport[]>([]);
 	let newLabel = $state('');
 	let newWidth = $state(1280);
 	let newHeight = $state(800);
 	let newIcon = $state<ViewportIcon>('monitor');
 	let formEl = $state<HTMLFormElement | null>(null);
 
-	let asyncCaptureLimit = $state(data.settings.asyncCaptureLimit ?? 2);
-	let asyncCompareLimit = $state(data.settings.asyncCompareLimit ?? 10);
-	let waitTimeout = $state(data.settings.waitTimeout ?? 120000);
-	let gotoTimeout = $state(data.settings.gotoTimeout ?? 120000);
+	let asyncCaptureLimit = $state(2);
+	let asyncCompareLimit = $state(10);
+	let waitTimeout = $state(120000);
+	let gotoTimeout = $state(120000);
+
+	$effect(() => {
+		viewports = [...data.settings.viewports];
+		asyncCaptureLimit = data.settings.asyncCaptureLimit ?? 2;
+		asyncCompareLimit = data.settings.asyncCompareLimit ?? 10;
+		waitTimeout = data.settings.waitTimeout ?? 120000;
+		gotoTimeout = data.settings.gotoTimeout ?? 120000;
+	});
 
 	const iconOptions: { value: ViewportIcon; label: string; icon: typeof MonitorIcon }[] = [
 		{ value: 'monitor', label: 'Monitor', icon: MonitorIcon },
