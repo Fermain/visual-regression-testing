@@ -29,6 +29,36 @@ module.exports = async (page, scenario) => {
 		await new Promise((resolve) => setTimeout(resolve, scenario.postInteractionWait));
 	}
 
+	// Scroll through the page to trigger lazy-loaded images
+	console.log('Scrolling to trigger lazy-loaded images...');
+	try {
+		await page.evaluate(async () => {
+			await new Promise((resolve) => {
+				const scrollHeight = document.body.scrollHeight;
+				const viewportHeight = window.innerHeight;
+				let currentPosition = 0;
+				
+				const scroll = () => {
+					currentPosition += viewportHeight;
+					window.scrollTo(0, currentPosition);
+					
+					if (currentPosition < scrollHeight) {
+						setTimeout(scroll, 100);
+					} else {
+						// Scroll back to top
+						window.scrollTo(0, 0);
+						setTimeout(resolve, 200);
+					}
+				};
+				
+				scroll();
+			});
+		});
+		console.log('Scroll complete.');
+	} catch (e) {
+		console.log(`Scroll error (continuing anyway): ${e.message}`);
+	}
+
 	// Wait for all images to load (or fail) before capturing screenshot
 	console.log('Waiting for images to load...');
 	try {
