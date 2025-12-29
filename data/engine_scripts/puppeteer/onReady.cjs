@@ -67,7 +67,7 @@ module.exports = async (page, scenario) => {
 			img.scrollIntoView({ block: 'center', behavior: 'instant' });
 		});
 
-		// 6. Nudge videos to load first frame and stop autoplay
+		// 6. Nudge videos to load first frame and stop autoplay (including video.js players)
 		const videos = document.querySelectorAll('video');
 		videos.forEach((vid) => {
 			vid.autoplay = false;
@@ -93,6 +93,20 @@ module.exports = async (page, scenario) => {
 				vid.load();
 			}
 		});
+
+		// Handle video.js players if present
+		if (window.videojs) {
+			document.querySelectorAll('.video-js').forEach((el) => {
+				try {
+					const player = window.videojs(el);
+					if (player) {
+						player.autoplay(false);
+						player.pause();
+						player.currentTime(0);
+					}
+				} catch {}
+			});
+		}
 
 		// 6. Return to top
 		window.scrollTo(0, 0);
