@@ -1,4 +1,4 @@
-module.exports = async (page, scenario, vp) => {
+module.exports = async (page, scenario) => {
 	console.log('onReady: ' + scenario.label);
 
 	// Wait for the specified delay after page load
