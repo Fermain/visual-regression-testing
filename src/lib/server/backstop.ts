@@ -29,7 +29,9 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 			url,
 			referenceUrl,
 			selectors: ['document'],
-			misMatchThreshold: 0.1
+			misMatchThreshold: 0.1,
+			// Default delay to allow lazy-loaded content to appear
+			delay: 3000
 		};
 
 		// 60 seconds default timeout per scenario

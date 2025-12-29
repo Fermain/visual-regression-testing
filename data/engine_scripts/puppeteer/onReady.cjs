@@ -1,19 +1,11 @@
 module.exports = async (page, scenario) => {
 	console.log('onReady: ' + scenario.label);
 
-	// Wait for the specified delay after page load
-	if (scenario.delay) {
-		console.log(`Waiting ${scenario.delay}ms (delay)...`);
-		await new Promise((resolve) => setTimeout(resolve, scenario.delay));
-	}
-
-	// Click the specified selector if it exists
+	// Click the specified selector if it exists (e.g., cookie consent)
 	if (scenario.clickSelector) {
 		const selector = scenario.clickSelector;
 		console.log(`Looking for clickSelector: ${selector}`);
-
 		try {
-			// Wait for the element to appear (up to 5 seconds)
 			await page.waitForSelector(selector, { timeout: 5000 });
 			console.log(`Found ${selector}, clicking...`);
 			await page.click(selector);
@@ -23,61 +15,90 @@ module.exports = async (page, scenario) => {
 		}
 	}
 
-	// Wait after interaction before capturing
+	// Wait after interaction
 	if (scenario.postInteractionWait) {
 		console.log(`Waiting ${scenario.postInteractionWait}ms (postInteractionWait)...`);
-		await new Promise((resolve) => setTimeout(resolve, scenario.postInteractionWait));
+		await new Promise((r) => setTimeout(r, scenario.postInteractionWait));
 	}
 
-	// Scroll through the page to trigger lazy-loaded images
-	console.log('Scrolling to trigger lazy-loaded images...');
-	try {
-		await page.evaluate(async () => {
-			await new Promise((resolve) => {
-				const scrollHeight = document.body.scrollHeight;
-				const viewportHeight = window.innerHeight;
-				let currentPosition = 0;
-				
-				const scroll = () => {
-					currentPosition += viewportHeight;
-					window.scrollTo(0, currentPosition);
-					
-					if (currentPosition < scrollHeight) {
-						setTimeout(scroll, 100);
-					} else {
-						// Scroll back to top
-						window.scrollTo(0, 0);
-						setTimeout(resolve, 200);
-					}
-				};
-				
-				scroll();
-			});
+	// Force lazy images to load
+	console.log('Forcing lazy images to load...');
+	const imageInfo = await page.evaluate(() => {
+		// 1. Remove native lazy loading
+		document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
+			img.removeAttribute('loading');
 		});
-		console.log('Scroll complete.');
-	} catch (e) {
-		console.log(`Scroll error (continuing anyway): ${e.message}`);
-	}
 
-	// Wait for all images to load (or fail) before capturing screenshot
+		// 2. Handle common lazy-load patterns (data-src, data-lazy-src, etc.)
+		document.querySelectorAll('img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
+			const lazySrc = img.dataset.src || img.dataset.lazySrc || img.dataset.original;
+			if (lazySrc && (!img.src || img.src.includes('data:') || img.src.includes('placeholder'))) {
+				img.src = lazySrc;
+			}
+		});
+
+		// 3. Handle srcset lazy loading
+		document.querySelectorAll('img[data-srcset]').forEach((img) => {
+			if (img.dataset.srcset) {
+				img.srcset = img.dataset.srcset;
+			}
+		});
+
+		// 4. Handle background images in data attributes
+		document.querySelectorAll('[data-bg], [data-background-image]').forEach((el) => {
+			const bg = el.dataset.bg || el.dataset.backgroundImage;
+			if (bg) {
+				el.style.backgroundImage = `url(${bg})`;
+			}
+		});
+
+		// 5. Scroll each image into view to trigger any remaining JS lazy loaders
+		const images = document.querySelectorAll('img');
+		images.forEach((img) => {
+			img.scrollIntoView({ block: 'center', behavior: 'instant' });
+		});
+
+		// 6. Return to top
+		window.scrollTo(0, 0);
+
+		return {
+			total: images.length,
+			withDataSrc: document.querySelectorAll('img[data-src]').length,
+			withLazyLoading: document.querySelectorAll('img[loading="lazy"]').length
+		};
+	});
+	console.log('Image info:', JSON.stringify(imageInfo));
+
+	// Wait for images to load after forcing
 	console.log('Waiting for images to load...');
-	try {
-		await page.evaluate(async () => {
+	await page.evaluate(() => {
+		return new Promise((resolve) => {
 			const images = Array.from(document.querySelectorAll('img'));
-			await Promise.all(
-				images.map((img) => {
-					if (img.complete) return Promise.resolve();
-					return new Promise((resolve) => {
-						img.addEventListener('load', resolve);
-						img.addEventListener('error', resolve);
-						// Timeout after 10 seconds per image
-						setTimeout(resolve, 10000);
-					});
-				})
-			);
+			let loaded = 0;
+			const total = images.length;
+
+			if (total === 0) {
+				resolve();
+				return;
+			}
+
+			const checkDone = () => {
+				loaded++;
+				if (loaded >= total) resolve();
+			};
+
+			images.forEach((img) => {
+				if (img.complete) {
+					checkDone();
+				} else {
+					img.onload = checkDone;
+					img.onerror = checkDone;
+				}
+			});
+
+			// Timeout after 10 seconds
+			setTimeout(resolve, 10000);
 		});
-		console.log('Images loaded.');
-	} catch (e) {
-		console.log(`Image wait error (continuing anyway): ${e.message}`);
-	}
+	});
+	console.log('Image loading complete.');
 };
