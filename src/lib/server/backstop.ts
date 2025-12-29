@@ -135,10 +135,9 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 				if (command === 'reference') {
 					count = pngs;
 				} else {
-					// Test mode
+					// Test mode - backstop creates timestamped folders like "20251209-115317"
 					const subdirs = await fs.readdir(bitmapsDir).catch(() => []);
-					// Filter for timestamp-like directories (numeric)
-					const timestampDirs = subdirs.filter(d => /^\d+$/.test(d)).sort().reverse();
+					const timestampDirs = subdirs.filter(d => /^\d{8}-\d{6}$/.test(d)).sort().reverse();
 					if (timestampDirs.length > 0) {
 						const latestDir = path.join(bitmapsDir, timestampDirs[0]);
 						const latestFiles = await fs.readdir(latestDir).catch(() => []);
@@ -153,7 +152,7 @@ export async function runBackstop(project: Project, command: 'reference' | 'test
 					currentProject.progress.current = `Processed ${count} of ${currentProject.progress.total}`;
 					await saveProject(currentProject);
 				}
-			} catch (e) {
+			} catch {
 				// Ignore polling errors
 			}
 		}, 2000);
