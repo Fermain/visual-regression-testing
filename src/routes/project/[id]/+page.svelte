@@ -156,7 +156,7 @@ This action cannot be undone."
 
 <!-- Lightbox -->
 <Dialog.Root bind:open={lightboxOpen}>
-	<Dialog.Content class="max-w-[95vw] w-auto h-[95vh] p-0 overflow-hidden bg-transparent border-0 shadow-none flex flex-col items-center justify-center outline-none">
+	<Dialog.Content showCloseButton={false} class="max-w-[95vw] w-auto h-[95vh] p-0 overflow-hidden bg-transparent border-0 shadow-none flex flex-col items-center justify-center outline-none">
 		<div class="relative w-full h-full flex flex-col items-center bg-black/80 backdrop-blur-sm rounded-lg overflow-hidden border border-white/10">
 			<!-- Header / Close area -->
 			<div class="absolute top-4 right-4 z-50">
