@@ -1,12 +1,8 @@
 module.exports = async (page, scenario) => {
-	// Helper to prefix all logs with scenario label
 	const log = (msg) => console.log(`[${scenario.label}] ${msg}`);
-
 	log('onReady started');
 
-	// 1. FREEZE ALL CSS ANIMATIONS AND TRANSITIONS
-	// This prevents timing-based visual differences
-	log('Freezing CSS animations and transitions...');
+	// 1. FREEZE CSS ANIMATIONS AND TRANSITIONS
 	await page.addStyleTag({
 		content: `
 			*, *::before, *::after {
@@ -14,58 +10,43 @@ module.exports = async (page, scenario) => {
 				animation-delay: 0s !important;
 				transition-duration: 0s !important;
 				transition-delay: 0s !important;
-			}
-			/* Also pause any running animations */
-			* {
 				animation-play-state: paused !important;
 			}
 		`
 	});
 
 	// 2. PAUSE SLICK SLIDERS
-	// Slick carousel auto-rotation causes visual differences
 	const slickCount = await page.evaluate(() => {
-		const sliders = document.querySelectorAll('.slick-slider');
 		let paused = 0;
-		sliders.forEach((slider) => {
+		document.querySelectorAll('.slick-slider').forEach((slider) => {
 			try {
-				// jQuery Slick API
 				if (window.jQuery && window.jQuery(slider).slick) {
 					window.jQuery(slider).slick('slickPause');
 					paused++;
 				}
 			} catch {}
 		});
-		return { total: sliders.length, paused };
+		return paused;
 	});
-	if (slickCount.total > 0) {
-		log(`Paused ${slickCount.paused}/${slickCount.total} Slick slider(s)`);
-	}
+	if (slickCount > 0) log(`Paused ${slickCount} Slick slider(s)`);
 
-	// 3. CLICK SELECTOR (e.g., cookie consent)
+	// 3. CLICK SELECTOR (cookie consent, modals, etc.)
 	if (scenario.clickSelector) {
-		const selector = scenario.clickSelector;
-		log(`Looking for clickSelector: ${selector}`);
 		try {
-			await page.waitForSelector(selector, { timeout: 5000 });
-			log(`Found ${selector}, clicking...`);
-			await page.click(selector);
-			log(`Clicked ${selector}`);
+			await page.waitForSelector(scenario.clickSelector, { timeout: 5000 });
+			await page.click(scenario.clickSelector);
+			log(`Clicked: ${scenario.clickSelector}`);
 		} catch (e) {
-			log(`Could not find or click ${selector}: ${e.message}`);
+			log(`Click failed: ${scenario.clickSelector} - ${e.message}`);
+		}
+		// Wait for click effects
+		if (scenario.postInteractionWait) {
+			await new Promise((r) => setTimeout(r, scenario.postInteractionWait));
 		}
 	}
 
-	// 4. POST-INTERACTION WAIT
-	if (scenario.postInteractionWait) {
-		log(`Waiting ${scenario.postInteractionWait}ms (postInteractionWait)...`);
-		await new Promise((r) => setTimeout(r, scenario.postInteractionWait));
-	}
-
-	// 5. HIDE DYNAMIC CONTENT SELECTORS
-	// Elements that change between runs (timestamps, counters, ads, etc.)
-	if (scenario.hideSelectors && scenario.hideSelectors.length > 0) {
-		log(`Hiding ${scenario.hideSelectors.length} dynamic selector(s)...`);
+	// 4. HIDE DYNAMIC SELECTORS
+	if (scenario.hideSelectors?.length > 0) {
 		await page.evaluate((selectors) => {
 			selectors.forEach((sel) => {
 				document.querySelectorAll(sel).forEach((el) => {
@@ -73,155 +54,160 @@ module.exports = async (page, scenario) => {
 				});
 			});
 		}, scenario.hideSelectors);
+		log(`Hidden ${scenario.hideSelectors.length} selector(s)`);
 	}
 
-	// 6. FORCE LAZY MEDIA TO LOAD
-	log('Forcing lazy media to load...');
-	const mediaInfo = await page.evaluate(() => {
+	// 5. FORCE LAZY MEDIA + FREEZE VIDEOS
+	const lazyInfo = await page.evaluate(() => {
+		let lazified = 0;
+
 		// Remove native lazy loading
-		document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
-			img.removeAttribute('loading');
-		});
-		document.querySelectorAll('video[loading="lazy"]').forEach((vid) => {
-			vid.removeAttribute('loading');
+		document.querySelectorAll('img[loading="lazy"], video[loading="lazy"]').forEach((el) => {
+			el.removeAttribute('loading');
 		});
 
-		// Handle common lazy-load patterns (data-src, data-lazy-src, etc.)
+		// data-src → src patterns
 		document.querySelectorAll('img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
-			const lazySrc = img.dataset.src || img.dataset.lazySrc || img.dataset.original;
-			if (lazySrc && (!img.src || img.src.includes('data:') || img.src.includes('placeholder'))) {
-				img.src = lazySrc;
-			}
-		});
-		document.querySelectorAll('video[data-src], video[data-lazy-src], video[data-original]').forEach((vid) => {
-			const lazySrc = vid.dataset.src || vid.dataset.lazySrc || vid.dataset.original;
-			if (lazySrc && (!vid.src || vid.src === '')) {
-				vid.src = lazySrc;
+			const src = img.dataset.src || img.dataset.lazySrc || img.dataset.original;
+			if (src && (!img.src || img.src.includes('data:') || img.src.includes('placeholder'))) {
+				img.src = src;
+				lazified++;
 			}
 		});
 
-		// Handle srcset lazy loading
+		// data-srcset → srcset
 		document.querySelectorAll('img[data-srcset]').forEach((img) => {
 			if (img.dataset.srcset) {
 				img.srcset = img.dataset.srcset;
+				lazified++;
 			}
 		});
 
-		// Handle background images in data attributes
+		// data-bg → background-image
 		document.querySelectorAll('[data-bg], [data-background-image]').forEach((el) => {
 			const bg = el.dataset.bg || el.dataset.backgroundImage;
 			if (bg) {
 				el.style.backgroundImage = `url(${bg})`;
+				lazified++;
 			}
 		});
 
-		const images = document.querySelectorAll('img');
-
-		// Nudge videos to load first frame and stop autoplay
-		const videos = document.querySelectorAll('video');
-		videos.forEach((vid) => {
+		// Freeze videos at frame 0
+		document.querySelectorAll('video').forEach((vid) => {
 			vid.autoplay = false;
-			vid.removeAttribute('autoplay');
-			vid.preload = 'auto';
-			try {
-				vid.pause();
-				vid.currentTime = 0;
-			} catch {}
-			try {
-				vid.muted = true;
-				const playPromise = vid.play();
-				if (playPromise && typeof playPromise.then === 'function') {
-					playPromise.then(() => {
-						vid.pause();
-						vid.currentTime = 0;
-					}).catch(() => {
-						vid.load();
-					});
-				}
-			} catch {
-				vid.load();
-			}
+			vid.preload = 'metadata';
+			try { vid.pause(); vid.currentTime = 0; } catch {}
 		});
 
-		// Handle video.js players if present
+		// Video.js
 		if (window.videojs) {
 			document.querySelectorAll('.video-js').forEach((el) => {
 				try {
-					const player = window.videojs(el);
-					if (player) {
-						player.autoplay(false);
-						player.pause();
-						player.currentTime(0);
-					}
+					const p = window.videojs(el);
+					if (p) { p.pause(); p.currentTime(0); }
 				} catch {}
 			});
 		}
 
-		return {
-			total: images.length,
-			withDataSrc: document.querySelectorAll('img[data-src]').length,
-			withLazyLoading: document.querySelectorAll('img[loading="lazy"]').length,
-			videos: videos.length
-		};
+		return lazified;
 	});
-	log(`Media info: ${JSON.stringify(mediaInfo)}`);
+	if (lazyInfo > 0) log(`Triggered ${lazyInfo} lazy element(s)`);
 
-	// 7. WAIT FOR NETWORK IDLE
-	// Wait for all network requests to settle (no requests for 500ms)
-	log('Waiting for network idle...');
-	try {
-		await page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 });
-		log('Network is idle.');
-	} catch (e) {
-		log(`Network idle timeout (continuing anyway): ${e.message}`);
-	}
-
-	// 8. WAIT FOR ALL MEDIA TO LOAD
-	log('Waiting for media to load...');
-	await page.evaluate(() => {
+	// 6. PRELOAD ALL IMAGES VIA Image() OBJECTS
+	// This is the most reliable way to ensure images are in browser cache
+	log('Preloading images...');
+	const preload = await page.evaluate((scanBg) => {
 		return new Promise((resolve) => {
-			const images = Array.from(document.querySelectorAll('img'));
-			const videos = Array.from(document.querySelectorAll('video'));
-			let loaded = 0;
-			const total = images.length + videos.length;
+			const urls = new Set();
 
-			if (total === 0) {
-				resolve();
-				return;
+			// Collect from <img> and <source>
+			document.querySelectorAll('img').forEach((img) => {
+				if (img.src && !img.src.startsWith('data:')) urls.add(img.src);
+				if (img.srcset) {
+					img.srcset.split(',').forEach((e) => {
+						const u = e.trim().split(' ')[0];
+						if (u && !u.startsWith('data:')) urls.add(u);
+					});
+				}
+			});
+			document.querySelectorAll('source[srcset]').forEach((src) => {
+				src.srcset.split(',').forEach((e) => {
+					const u = e.trim().split(' ')[0];
+					if (u && !u.startsWith('data:')) urls.add(u);
+				});
+			});
+
+			// Optional: scan background images (expensive on large DOMs)
+			if (scanBg) {
+				document.querySelectorAll('*').forEach((el) => {
+					try {
+						const bg = getComputedStyle(el).backgroundImage;
+						if (bg && bg !== 'none') {
+							const matches = bg.match(/url\(["']?([^"')]+)["']?\)/g);
+							if (matches) {
+								matches.forEach((m) => {
+									const u = m.replace(/url\(["']?/, '').replace(/["']?\)/, '');
+									if (u && !u.startsWith('data:')) urls.add(u);
+								});
+							}
+						}
+					} catch {}
+				});
 			}
 
-			const checkDone = () => {
-				loaded++;
-				if (loaded >= total) resolve();
+			const arr = Array.from(urls);
+			if (arr.length === 0) return resolve({ total: 0, loaded: 0, failed: 0 });
+
+			let loaded = 0, failed = 0;
+			const failedUrls = [];
+
+			const done = () => {
+				if (loaded + failed >= arr.length) {
+					resolve({ total: arr.length, loaded, failed, failedUrls: failedUrls.slice(0, 5) });
+				}
 			};
 
-			images.forEach((img) => {
-				if (img.complete) {
-					checkDone();
-				} else {
-					img.onload = checkDone;
-					img.onerror = checkDone;
-				}
+			arr.forEach((url) => {
+				const img = new Image();
+				img.onload = () => { loaded++; done(); };
+				img.onerror = () => { failed++; failedUrls.push(url.slice(0, 80)); done(); };
+				img.src = url;
 			});
 
-			videos.forEach((vid) => {
-				const done = () => checkDone();
-				if (vid.readyState >= 2) {
-					checkDone();
-				} else {
-					vid.addEventListener('loadeddata', done, { once: true });
-					vid.addEventListener('error', done, { once: true });
-				}
-			});
-
-			// Timeout after 12 seconds
-			setTimeout(resolve, 12000);
+			setTimeout(() => resolve({ total: arr.length, loaded, failed, timedOut: true, failedUrls: failedUrls.slice(0, 5) }), 12000);
 		});
-	});
-	log('Media loading complete.');
+	}, scenario.scanBackgroundImages || false);
 
-	// 9. FINAL SETTLE TIME
-	// Allow layout to stabilize after all loading
-	await new Promise((resolve) => setTimeout(resolve, 800));
-	log('Ready for screenshot.');
+	log(`Preload: ${preload.loaded}/${preload.total}` + 
+		(preload.failed ? ` (${preload.failed} failed)` : '') +
+		(preload.timedOut ? ' [timeout]' : ''));
+	if (preload.failedUrls?.length) log(`Failed: ${preload.failedUrls.join(', ')}`);
+
+	// 7. WAIT FOR NETWORK IDLE
+	try {
+		await page.waitForNetworkIdle({ idleTime: 500, timeout: 8000 });
+	} catch (e) {
+		log(`Network idle timeout: ${e.message}`);
+	}
+
+	// 8. VERIFY IMAGES RENDERED (log warnings, no retry)
+	const broken = await page.evaluate(() => {
+		const bad = [];
+		document.querySelectorAll('img').forEach((img) => {
+			if (img.width < 10 && img.height < 10) return; // skip tracking pixels
+			if (!img.src || img.src.startsWith('data:')) return;
+			if (img.naturalWidth === 0) {
+				bad.push(img.src.slice(0, 80));
+			}
+		});
+		return bad;
+	});
+	if (broken.length > 0) {
+		log(`WARNING: ${broken.length} image(s) did not render:`);
+		broken.slice(0, 5).forEach((u) => log(`  - ${u}`));
+	}
+
+	// 9. SETTLE
+	await new Promise((r) => setTimeout(r, 500));
+	log('Ready');
 };
