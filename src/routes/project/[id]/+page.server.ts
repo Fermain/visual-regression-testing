@@ -1,6 +1,6 @@
 import * as db from '$lib/server/storage';
 import { getSettings } from '$lib/server/settings';
-import { runBackstop } from '$lib/server/backstop';
+import { addJob, getQueuePosition, getJobStatus } from '$lib/server/queue';
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import path from 'node:path';
@@ -43,12 +43,18 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		}
 	}
 
-	// Get pair-specific result
+	// Get pair-specific result from project
 	const pairResult = selectedPair ? project.pairResults?.[selectedPair.id] : null;
+
+	// Get queue status
+	const queueJob = selectedPair ? getJobStatus(params.id, selectedPair.id) : null;
+	const queuePosition = selectedPair ? getQueuePosition(params.id, selectedPair.id) : -1;
 
 	return {
 		project,
 		pairResult,
+		queueJob,
+		queuePosition,
 		report,
 		hasReference,
 		referenceImages
@@ -56,7 +62,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 };
 
 export const actions: Actions = {
-	run: async ({ request, params, url }) => {
+	run: async ({ request, params }) => {
 		try {
 			const data = await request.formData();
 			const command = data.get('command') as 'reference' | 'test' | 'approve';
@@ -73,65 +79,26 @@ export const actions: Actions = {
 			const urlPair = settings.urlPairs?.find((p) => p.id === pairId);
 			if (!urlPair) return fail(400, { error: 'Invalid URL pair', success: false });
 
-			// Check if this pair is already running
-			const currentPairResult = project.pairResults?.[pairId];
-			if (currentPairResult?.status === 'running') {
-				return fail(409, { error: 'Test is already running for this URL pair', success: false });
+			// Add to queue (queue handles duplicate checking)
+			const job = addJob(params.id, pairId, command);
+
+			// Update project status to queued if not already running
+			if (job.status === 'queued') {
+				project.pairResults = project.pairResults || {};
+				project.pairResults[pairId] = {
+					...project.pairResults[pairId],
+					status: 'queued',
+					lastRun: new Date().toISOString()
+				};
+				await db.saveProject(project);
 			}
 
-			// Update status to running for this pair
-			project.pairResults = project.pairResults || {};
-			project.pairResults[pairId] = {
-				...project.pairResults[pairId],
-				status: 'running',
-				lastRun: new Date().toISOString()
+			return { 
+				success: true, 
+				command, 
+				status: job.status,
+				queuePosition: getQueuePosition(params.id, pairId)
 			};
-			await db.saveProject(project);
-
-			console.log(`Starting ${command} for project ${project.id} with pair ${pairId}...`);
-
-			// Run Backstop in the background
-			(async () => {
-				try {
-					const result = await runBackstop(project, urlPair, command);
-
-					const p = await db.getProject(params.id);
-					if (p) {
-						p.pairResults = p.pairResults || {};
-						p.pairResults[pairId] = {
-							status: 'idle',
-							lastRun: new Date().toISOString(),
-							lastResult: {
-								success: result.success,
-								command,
-								error: result.error
-							}
-						};
-						await db.saveProject(p);
-						console.log(
-							`Finished ${command} for project ${project.id} pair ${pairId}. Success: ${result.success}`
-						);
-					}
-				} catch (e) {
-					console.error('Background backstop execution failed:', e);
-					const p = await db.getProject(params.id);
-					if (p) {
-						p.pairResults = p.pairResults || {};
-						p.pairResults[pairId] = {
-							status: 'idle',
-							lastRun: new Date().toISOString(),
-							lastResult: {
-								success: false,
-								command,
-								error: e instanceof Error ? e.message : String(e)
-							}
-						};
-						await db.saveProject(p);
-					}
-				}
-			})();
-
-			return { success: true, command, status: 'running' };
 		} catch (e) {
 			console.error('Unexpected error in run action:', e);
 			return fail(500, {

@@ -29,6 +29,7 @@
 	// Derived state from project data
 	let project = $derived(data.project);
 	let pairResult = $derived(data.pairResult);
+	let queuePosition = $derived(data.queuePosition);
 	let report = $derived(data.report);
 	let hasReport = $derived(report !== null);
 	let hasReference = $derived(data.hasReference);
@@ -42,7 +43,9 @@
 	);
 
 	// Status management
-	let isRunning = $state(false);
+	let isRunning = $derived(pairResult?.status === 'running');
+	let isQueued = $derived(pairResult?.status === 'queued');
+	let isBusy = $derived(isRunning || isQueued);
 	let runningCommand = $state<'reference' | 'test' | 'approve' | null>(null);
 	let pollInterval: ReturnType<typeof setInterval>;
 	let progress = $derived(pairResult?.progress);
@@ -57,17 +60,15 @@
 		return { total, failed, passed };
 	});
 
-	// Sync local running state with server status for the current pair
+	// Poll for status updates when queued or running
 	$effect(() => {
-		if (pairResult?.status === 'running') {
-			isRunning = true;
+		if (pairResult?.status === 'running' || pairResult?.status === 'queued') {
 			if (!pollInterval) {
 				pollInterval = setInterval(() => {
 					invalidateAll();
 				}, 2000);
 			}
 		} else {
-			isRunning = false;
 			runningCommand = null;
 			if (pollInterval) {
 				clearInterval(pollInterval);
@@ -216,7 +217,7 @@ This action cannot be undone."
 
 				<Button
 					type="button"
-					disabled={isRunning || !selectedPair}
+					disabled={isBusy || !selectedPair}
 					variant={!hasReference ? "default" : "secondary"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
@@ -232,7 +233,7 @@ This action cannot be undone."
 
 				<Button
 					type="button"
-					disabled={isRunning || !hasReference || !selectedPair}
+					disabled={isBusy || !hasReference || !selectedPair}
 					variant={hasReference && (!hasReport || (reportStats?.passed === reportStats?.total)) ? "default" : "secondary"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
@@ -248,7 +249,7 @@ This action cannot be undone."
 
 				<Button
 					type="button"
-					disabled={isRunning || !hasReport || reportStats?.failed === 0 || !selectedPair}
+					disabled={isBusy || !hasReport || reportStats?.failed === 0 || !selectedPair}
 					variant={reportStats?.failed > 0 ? "default" : "outline"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50"
@@ -263,7 +264,12 @@ This action cannot be undone."
 				</Button>
 			</form>
 
-			{#if isRunning}
+			{#if isQueued}
+				<div class="flex items-center gap-2 text-xs text-muted-foreground">
+					<Loader2Icon class="h-3 w-3 animate-spin" />
+					<span>Queued{queuePosition > 0 ? ` (#${queuePosition})` : ''}</span>
+				</div>
+			{:else if isRunning}
 				<div class="flex flex-col gap-1 min-w-[200px]">
 					<div class="flex items-center justify-between text-xs text-muted-foreground">
 						<span class="flex items-center">

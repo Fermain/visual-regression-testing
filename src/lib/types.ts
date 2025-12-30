@@ -14,7 +14,7 @@ export interface UrlPair {
 }
 
 export interface PairResult {
-	status: 'idle' | 'running';
+	status: 'idle' | 'queued' | 'running';
 	lastRun?: string;
 	lastResult?: {
 		success: boolean;

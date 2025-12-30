@@ -18,6 +18,7 @@
 		if (pathname === '/settings') return [{ label: 'Settings', href: '/settings' }];
 		if (pathname === '/failed') return [{ label: 'Failed', href: '/failed' }];
 		if (pathname === '/passing') return [{ label: 'Passing', href: '/passing' }];
+		if (pathname === '/queue') return [{ label: 'Queue', href: '/queue' }];
 		if (pathname === '/project/new') {
 			return [
 				{ label: 'Tests', href: '/' },
