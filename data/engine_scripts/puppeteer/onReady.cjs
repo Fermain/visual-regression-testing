@@ -61,11 +61,7 @@ module.exports = async (page, scenario) => {
 			}
 		});
 
-		// 5. Scroll each image into view to trigger any remaining JS lazy loaders
 		const images = document.querySelectorAll('img');
-		images.forEach((img) => {
-			img.scrollIntoView({ block: 'center', behavior: 'instant' });
-		});
 
 		// 6. Nudge videos to load first frame and stop autoplay (including video.js players)
 		const videos = document.querySelectorAll('video');
@@ -107,9 +103,6 @@ module.exports = async (page, scenario) => {
 				} catch {}
 			});
 		}
-
-		// 6. Return to top
-		window.scrollTo(0, 0);
 
 		return {
 			total: images.length,
@@ -164,6 +157,6 @@ module.exports = async (page, scenario) => {
 	});
 	console.log('Media loading complete.');
 
-	// Allow layout to settle after scroll and media load
+	// Allow layout to settle after media load
 	await new Promise((resolve) => setTimeout(resolve, 800));
 };
