@@ -22,7 +22,27 @@ module.exports = async (page, scenario) => {
 		`
 	});
 
-	// 2. CLICK SELECTOR (e.g., cookie consent)
+	// 2. PAUSE SLICK SLIDERS
+	// Slick carousel auto-rotation causes visual differences
+	const slickCount = await page.evaluate(() => {
+		const sliders = document.querySelectorAll('.slick-slider');
+		let paused = 0;
+		sliders.forEach((slider) => {
+			try {
+				// jQuery Slick API
+				if (window.jQuery && window.jQuery(slider).slick) {
+					window.jQuery(slider).slick('slickPause');
+					paused++;
+				}
+			} catch {}
+		});
+		return { total: sliders.length, paused };
+	});
+	if (slickCount.total > 0) {
+		log(`Paused ${slickCount.paused}/${slickCount.total} Slick slider(s)`);
+	}
+
+	// 3. CLICK SELECTOR (e.g., cookie consent)
 	if (scenario.clickSelector) {
 		const selector = scenario.clickSelector;
 		log(`Looking for clickSelector: ${selector}`);
@@ -36,13 +56,13 @@ module.exports = async (page, scenario) => {
 		}
 	}
 
-	// 3. POST-INTERACTION WAIT
+	// 4. POST-INTERACTION WAIT
 	if (scenario.postInteractionWait) {
 		log(`Waiting ${scenario.postInteractionWait}ms (postInteractionWait)...`);
 		await new Promise((r) => setTimeout(r, scenario.postInteractionWait));
 	}
 
-	// 4. HIDE DYNAMIC CONTENT SELECTORS
+	// 5. HIDE DYNAMIC CONTENT SELECTORS
 	// Elements that change between runs (timestamps, counters, ads, etc.)
 	if (scenario.hideSelectors && scenario.hideSelectors.length > 0) {
 		log(`Hiding ${scenario.hideSelectors.length} dynamic selector(s)...`);
@@ -55,7 +75,7 @@ module.exports = async (page, scenario) => {
 		}, scenario.hideSelectors);
 	}
 
-	// 5. FORCE LAZY MEDIA TO LOAD
+	// 6. FORCE LAZY MEDIA TO LOAD
 	log('Forcing lazy media to load...');
 	const mediaInfo = await page.evaluate(() => {
 		// Remove native lazy loading
@@ -146,7 +166,7 @@ module.exports = async (page, scenario) => {
 	});
 	log(`Media info: ${JSON.stringify(mediaInfo)}`);
 
-	// 6. WAIT FOR NETWORK IDLE
+	// 7. WAIT FOR NETWORK IDLE
 	// Wait for all network requests to settle (no requests for 500ms)
 	log('Waiting for network idle...');
 	try {
@@ -156,7 +176,7 @@ module.exports = async (page, scenario) => {
 		log(`Network idle timeout (continuing anyway): ${e.message}`);
 	}
 
-	// 7. WAIT FOR ALL MEDIA TO LOAD
+	// 8. WAIT FOR ALL MEDIA TO LOAD
 	log('Waiting for media to load...');
 	await page.evaluate(() => {
 		return new Promise((resolve) => {
@@ -200,7 +220,7 @@ module.exports = async (page, scenario) => {
 	});
 	log('Media loading complete.');
 
-	// 8. FINAL SETTLE TIME
+	// 9. FINAL SETTLE TIME
 	// Allow layout to stabilize after all loading
 	await new Promise((resolve) => setTimeout(resolve, 800));
 	log('Ready for screenshot.');
