@@ -54,6 +54,15 @@
 		});
 		invalidateAll();
 	}
+
+	// Derived progress calculations
+	let progressPercent = $derived(
+		data.progress.total > 0 ? (data.progress.completed / data.progress.total) * 100 : 0
+	);
+	let failedPercent = $derived(
+		data.progress.total > 0 ? (data.progress.failed / data.progress.total) * 100 : 0
+	);
+	let successPercent = $derived(progressPercent - failedPercent);
 </script>
 
 <div class="flex-1 overflow-auto p-6">
@@ -66,6 +75,62 @@
 			</Button>
 		{/if}
 	</div>
+
+	<!-- Overall Progress -->
+	{#if data.progress.isActive || data.progress.total > 0}
+		<div class="mb-8 rounded-lg border bg-card p-4">
+			<div class="flex items-center justify-between mb-2">
+				<h2 class="text-sm font-medium">Overall Progress</h2>
+				<span class="text-sm text-muted-foreground">
+					{data.progress.completed} / {data.progress.total} jobs
+					{#if data.progress.failed > 0}
+						<span class="text-destructive">({data.progress.failed} failed)</span>
+					{/if}
+				</span>
+			</div>
+		<div class="h-2.5 w-full bg-secondary rounded-full overflow-hidden">
+			<div class="h-full flex">
+				<div 
+					class="h-full bg-green-500 transition-all duration-500 ease-out"
+					style="width: {successPercent}%"
+				></div>
+				<div 
+					class="h-full bg-destructive transition-all duration-500 ease-out"
+					style="width: {failedPercent}%"
+				></div>
+			</div>
+		</div>
+			
+			<!-- Project breakdown -->
+			{#if data.progress.projects.length > 1}
+				<div class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+					{#each data.progress.projects as proj}
+						{@const projPercent = proj.total > 0 ? ((proj.completed + proj.failed) / proj.total) * 100 : 0}
+						{@const isDone = proj.completed + proj.failed === proj.total}
+						{@const hasFailed = proj.failed > 0}
+						<div class="text-xs p-2 rounded border bg-muted/30 {isDone && !hasFailed ? 'border-green-500/30' : ''} {hasFailed ? 'border-destructive/30' : ''}">
+							<div class="flex items-center justify-between mb-1">
+								<span class="font-medium truncate" title={proj.name}>{proj.name}</span>
+								{#if isDone}
+									{#if hasFailed}
+										<XCircleIcon class="h-3 w-3 text-destructive shrink-0" />
+									{:else}
+										<CheckCircle2Icon class="h-3 w-3 text-green-500 shrink-0" />
+									{/if}
+								{/if}
+							</div>
+							<div class="h-1 w-full bg-secondary rounded-full overflow-hidden">
+								<div 
+									class="h-full {hasFailed ? 'bg-destructive' : 'bg-green-500'} transition-all duration-300"
+									style="width: {projPercent}%"
+								></div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- Currently Running -->
 	{#if data.running}
