@@ -81,7 +81,7 @@
 									{#each run.tests.slice(0, 8) as test}
 										<div
 											class="w-1.5 h-4 rounded-sm {test.status === 'pass' ? 'bg-green-500' : 'bg-destructive'}"
-											title="{test.label} ({test.viewport}): {test.status}{test.mismatch ? ` - ${test.mismatch}% mismatch` : ''}"
+											title="{test.path} ({test.viewport}): {test.status}{test.mismatch ? ` - ${test.mismatch}% mismatch` : ''}"
 										></div>
 									{/each}
 									{#if run.tests.length > 8}

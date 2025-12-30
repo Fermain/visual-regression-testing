@@ -6,6 +6,15 @@ import type { Actions, PageServerLoad } from './$types';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
+function extractPath(url: string): string {
+	try {
+		const u = new URL(url);
+		return u.pathname || '/';
+	} catch {
+		return url;
+	}
+}
+
 interface TestResult {
 	projectId: string;
 	projectName: string;
@@ -16,7 +25,7 @@ interface TestResult {
 	passedTests: number;
 	failedTests: number;
 	tests: {
-		label: string;
+		path: string;
 		viewport: string;
 		status: 'pass' | 'fail';
 		mismatch?: string;
@@ -50,10 +59,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 					.filter((t: unknown) => t && typeof t === 'object' && 'pair' in t && 'status' in t)
 					.map(
 						(t: {
-							pair: { label: string; viewportLabel: string; diff?: { misMatchPercentage: string } };
+							pair: { url?: string; viewportLabel: string; diff?: { misMatchPercentage: string } };
 							status: string;
 						}) => ({
-							label: t.pair?.label ?? 'unknown',
+							path: extractPath(t.pair?.url ?? ''),
 							viewport: t.pair?.viewportLabel ?? 'unknown',
 							status: t.status as 'pass' | 'fail',
 							mismatch: t.pair?.diff?.misMatchPercentage

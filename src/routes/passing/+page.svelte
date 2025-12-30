@@ -42,7 +42,7 @@
 							<TableCell>
 								<Badge variant="secondary" class="text-xs font-mono">{p.pairDisplay}</Badge>
 							</TableCell>
-							<TableCell class="font-mono text-sm">{p.label}</TableCell>
+							<TableCell class="font-mono text-sm">{p.path}</TableCell>
 							<TableCell>
 								<Badge variant="outline">{p.viewport}</Badge>
 							</TableCell>

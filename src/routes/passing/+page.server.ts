@@ -10,11 +10,20 @@ export type PassingPath = {
 	projectName: string;
 	pairId: string;
 	pairDisplay: string;
-	label: string;
+	path: string;
 	viewport: string;
 	url: string;
 	referenceUrl: string;
 };
+
+function extractPath(url: string): string {
+	try {
+		const u = new URL(url);
+		return u.pathname || '/';
+	} catch {
+		return url;
+	}
+}
 
 export const load: PageServerLoad = async () => {
 	const projects = await getProjects();
@@ -34,14 +43,15 @@ export const load: PageServerLoad = async () => {
 
 				for (const t of tests) {
 					if (t?.status === 'pass' && t?.pair) {
+						const url = t.pair.url ?? '';
 						passing.push({
 							projectId: project.id,
 							projectName: project.name,
 							pairId: pair.id,
 							pairDisplay: getPairDisplayName(pair),
-							label: t.pair.label ?? 'unknown',
+							path: extractPath(url),
 							viewport: t.pair.viewportLabel ?? 'unknown',
-							url: t.pair.url ?? '',
+							url,
 							referenceUrl: t.pair.referenceUrl ?? ''
 						});
 					}
