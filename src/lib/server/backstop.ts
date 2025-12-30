@@ -3,6 +3,30 @@ import type { Project, UrlPair } from '$lib/types';
 import { getSettings } from '$lib/server/settings';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+
+/**
+ * Generate a safe, short label for a path.
+ * BackstopJS uses labels in filenames, so we need to avoid ENAMETOOLONG errors.
+ * Max filename is typically 255 chars; BackstopJS adds ~50-80 chars for ID/viewport/etc.
+ * We limit labels to 80 characters max.
+ */
+function generateSafeLabel(urlPath: string): string {
+	if (urlPath === '/') return 'root';
+
+	// Clean the path: remove leading/trailing slashes, replace slashes with underscores
+	const cleaned = urlPath.replace(/^\/+|\/+$/g, '').replace(/\//g, '_');
+
+	// If short enough, use as-is
+	if (cleaned.length <= 80) {
+		return cleaned;
+	}
+
+	// For long paths, use a truncated version + hash for uniqueness
+	const hash = crypto.createHash('md5').update(urlPath).digest('hex').slice(0, 8);
+	const truncated = cleaned.slice(0, 70);
+	return `${truncated}_${hash}`;
+}
 
 export async function runBackstop(
 	project: Project,
@@ -30,7 +54,7 @@ export async function runBackstop(
 		}
 
 		const scenario: Record<string, unknown> = {
-			label: p === '/' ? 'root' : p.replace(/\//g, '_'),
+			label: generateSafeLabel(p),
 			url,
 			referenceUrl,
 			selectors: ['document'],
@@ -54,8 +78,10 @@ export async function runBackstop(
 		return scenario;
 	});
 
-	// Use combined ID for BackstopJS to avoid filename collisions
-	const backstopId = `${project.id}_${urlPair.id}`;
+	// Use short hash-based ID for BackstopJS to minimize filename length
+	// The full project/pair IDs are already used in the directory path
+	const idHash = crypto.createHash('md5').update(`${project.id}_${urlPair.id}`).digest('hex').slice(0, 12);
+	const backstopId = `bs_${idHash}`;
 
 	const config = {
 		id: backstopId,

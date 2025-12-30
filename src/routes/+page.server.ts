@@ -44,17 +44,21 @@ export const load: PageServerLoad = async ({ parent }) => {
 				const reportData = await fs.readFile(reportPath, 'utf-8');
 				const report = JSON.parse(reportData);
 
-				const tests = report.tests.map(
-					(t: {
-						pair: { label: string; viewportLabel: string; diff?: { misMatchPercentage: string } };
-						status: string;
-					}) => ({
-						label: t.pair.label,
-						viewport: t.pair.viewportLabel,
-						status: t.status as 'pass' | 'fail',
-						mismatch: t.pair.diff?.misMatchPercentage
-					})
-				);
+				// Safely handle missing or malformed tests array
+				const rawTests = Array.isArray(report?.tests) ? report.tests : [];
+				const tests = rawTests
+					.filter((t: unknown) => t && typeof t === 'object' && 'pair' in t && 'status' in t)
+					.map(
+						(t: {
+							pair: { label: string; viewportLabel: string; diff?: { misMatchPercentage: string } };
+							status: string;
+						}) => ({
+							label: t.pair?.label ?? 'unknown',
+							viewport: t.pair?.viewportLabel ?? 'unknown',
+							status: t.status as 'pass' | 'fail',
+							mismatch: t.pair?.diff?.misMatchPercentage
+						})
+					);
 
 				recentRuns.push({
 					projectId: project.id,
@@ -67,8 +71,9 @@ export const load: PageServerLoad = async ({ parent }) => {
 					failedTests: tests.filter((t: { status: string }) => t.status === 'fail').length,
 					tests
 				});
-			} catch {
-				// No report for this project/pair
+			} catch (e) {
+				// Log but don't fail - report may be missing, corrupted, or mid-write
+				console.warn(`Failed to read report for ${project.id}/${pair.id}:`, e);
 			}
 		}
 	}

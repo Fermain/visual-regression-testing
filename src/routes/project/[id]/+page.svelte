@@ -48,10 +48,11 @@
 
 	// Report Stats
 	let reportStats = $derived.by(() => {
-		if (!report || !report.tests) return null;
-		const total = report.tests.length;
-		const failed = report.tests.filter((t: any) => t.status === 'fail').length;
-		const passed = report.tests.filter((t: any) => t.status === 'pass').length;
+		if (!report || !Array.isArray(report.tests)) return null;
+		const tests = report.tests.filter((t: any) => t && typeof t === 'object' && 'status' in t);
+		const total = tests.length;
+		const failed = tests.filter((t: any) => t.status === 'fail').length;
+		const passed = tests.filter((t: any) => t.status === 'pass').length;
 		return { total, failed, passed };
 	});
 
