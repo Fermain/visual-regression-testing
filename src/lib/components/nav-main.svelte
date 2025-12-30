@@ -2,6 +2,8 @@
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+import CheckCircle2Icon from '@lucide/svelte/icons/check-circle-2';
+import XCircleIcon from '@lucide/svelte/icons/x-circle';
 	import { page } from '$app/stores';
 
 	const navItems = [
@@ -10,6 +12,16 @@
 			url: '/',
 			icon: LayoutDashboardIcon
 		},
+	{
+		title: 'Failed',
+		url: '/failed',
+		icon: XCircleIcon
+	},
+	{
+		title: 'Passing',
+		url: '/passing',
+		icon: CheckCircle2Icon
+	},
 		{
 			title: 'Settings',
 			url: '/settings',
