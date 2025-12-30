@@ -11,20 +11,28 @@
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import XIcon from '@lucide/svelte/icons/x';
 	import StopCircleIcon from '@lucide/svelte/icons/stop-circle';
+	import TimerIcon from '@lucide/svelte/icons/timer';
 	import { formatDistanceToNow } from 'date-fns';
 
 	let { data }: { data: PageData } = $props();
 
 	let pollInterval: ReturnType<typeof setInterval>;
+	let countdownInterval: ReturnType<typeof setInterval>;
+	let now = $state(Date.now());
 
 	onMount(() => {
 		pollInterval = setInterval(() => {
 			invalidateAll();
 		}, 2000);
+		// Update countdown every second
+		countdownInterval = setInterval(() => {
+			now = Date.now();
+		}, 1000);
 	});
 
 	onDestroy(() => {
 		if (pollInterval) clearInterval(pollInterval);
+		if (countdownInterval) clearInterval(countdownInterval);
 	});
 
 	async function cancelJob(jobId: string) {
@@ -55,6 +63,26 @@
 		invalidateAll();
 	}
 
+	function formatDuration(ms: number): string {
+		if (ms < 1000) return '<1s';
+		const seconds = Math.floor(ms / 1000);
+		if (seconds < 60) return `${seconds}s`;
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+		if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+		const hours = Math.floor(minutes / 60);
+		const remainingMinutes = minutes % 60;
+		return `${hours}h ${remainingMinutes}m`;
+	}
+
+	// Calculate running job's remaining time
+	let runningTimeRemaining = $derived.by(() => {
+		if (!data.running?.startedAt || !data.running?.estimatedDurationMs) return null;
+		const elapsed = now - new Date(data.running.startedAt).getTime();
+		const remaining = data.running.estimatedDurationMs - elapsed;
+		return Math.max(0, remaining);
+	});
+
 	// Derived progress calculations
 	let progressPercent = $derived(
 		data.progress.total > 0 ? (data.progress.completed / data.progress.total) * 100 : 0
@@ -81,14 +109,22 @@
 		<div class="mb-8 rounded-lg border bg-card p-4">
 			<div class="flex items-center justify-between mb-2">
 				<h2 class="text-sm font-medium">Overall Progress</h2>
-				<span class="text-sm text-muted-foreground">
-					{data.progress.completed} / {data.progress.total} jobs
-					{#if data.progress.failed > 0}
-						<span class="text-destructive">({data.progress.failed} failed)</span>
+				<div class="flex items-center gap-4 text-sm text-muted-foreground">
+					{#if data.progress.isActive && data.progress.estimatedRemainingMs > 0}
+						<span class="flex items-center gap-1.5">
+							<TimerIcon class="h-3.5 w-3.5" />
+							~{formatDuration(data.progress.estimatedRemainingMs)} remaining
+						</span>
 					{/if}
-				</span>
+					<span>
+						{data.progress.completed} / {data.progress.total} jobs
+						{#if data.progress.failed > 0}
+							<span class="text-destructive">({data.progress.failed} failed)</span>
+						{/if}
+					</span>
+				</div>
 			</div>
-		<div class="h-2.5 w-full bg-secondary rounded-full overflow-hidden">
+			<div class="h-2.5 w-full bg-secondary rounded-full overflow-hidden">
 			<div class="h-full flex">
 				<div 
 					class="h-full bg-green-500 transition-all duration-500 ease-out"
@@ -145,12 +181,36 @@
 							{data.running.command} • {data.running.pairId}
 						</p>
 					</div>
-					{#if data.running.startedAt}
-						<span class="text-xs text-muted-foreground">
-							Started {formatDistanceToNow(new Date(data.running.startedAt), { addSuffix: true })}
-						</span>
-					{/if}
+					<div class="flex items-center gap-3 text-xs text-muted-foreground">
+						{#if runningTimeRemaining !== null && data.running?.estimatedDurationMs && data.running?.startedAt}
+							{@const elapsed = now - new Date(data.running.startedAt).getTime()}
+							{@const overTime = elapsed - data.running.estimatedDurationMs}
+							<span class="flex items-center gap-1 font-mono tabular-nums {overTime > 0 ? 'text-red-500' : ''}">
+								<TimerIcon class="h-3.5 w-3.5" />
+								{#if overTime > 0}
+									+{formatDuration(overTime)}
+								{:else}
+									{formatDuration(runningTimeRemaining)}
+								{/if}
+							</span>
+						{/if}
+						{#if data.running.startedAt}
+							<span>
+								Started {formatDistanceToNow(new Date(data.running.startedAt), { addSuffix: true })}
+							</span>
+						{/if}
+					</div>
 				</div>
+				{#if data.running.estimatedDurationMs && data.running.startedAt}
+					{@const elapsed = now - new Date(data.running.startedAt).getTime()}
+					{@const progressPct = Math.min(100, (elapsed / data.running.estimatedDurationMs) * 100)}
+					<div class="mt-3 h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+						<div 
+							class="h-full bg-blue-500 transition-all duration-1000 ease-linear {progressPct >= 100 ? 'bg-amber-500' : ''}"
+							style="width: {progressPct}%"
+						></div>
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -174,6 +234,11 @@
 							<p class="font-medium text-sm">{job.projectName}</p>
 							<p class="text-xs text-muted-foreground">{job.command} • {job.pairId}</p>
 						</div>
+						{#if job.estimatedDurationMs}
+							<span class="text-xs text-muted-foreground font-mono">
+								~{formatDuration(job.estimatedDurationMs)}
+							</span>
+						{/if}
 						<Badge variant="outline" class="text-xs">{job.command}</Badge>
 						<button 
 							onclick={() => cancelJob(job.id)}

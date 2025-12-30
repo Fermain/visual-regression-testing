@@ -26,5 +26,6 @@ vite.config.ts.timestamp-*
 data/projects.json
 data/projects.json.tmp
 data/settings.json
+data/run-history.json
 data/projects/*
 !data/projects/.keep

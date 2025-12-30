@@ -1,6 +1,7 @@
 import type { Project, UrlPair } from '$lib/types';
 import { runBackstop } from './backstop';
 import { getProject, saveProject } from './storage';
+import { addRunRecord } from './history';
 
 export interface QueueJob {
 	id: string;
@@ -173,6 +174,7 @@ async function processQueue(): Promise<void> {
 		}
 
 		// Run the job
+		const startTime = Date.now();
 		try {
 			const { getSettings } = await import('./settings');
 			const settings = await getSettings();
@@ -184,10 +186,20 @@ async function processQueue(): Promise<void> {
 			}
 
 			const result = await runBackstop(project, pair, job.command);
+			const durationMs = Date.now() - startTime;
 
 			job.status = result.success ? 'completed' : 'failed';
 			job.completedAt = new Date().toISOString();
 			job.error = result.error;
+
+			// Record to history
+			await addRunRecord(job.projectId, {
+				command: job.command,
+				pairId: job.pairId,
+				success: result.success,
+				durationMs,
+				error: result.error
+			});
 
 			// Update project with result
 			const updatedProject = await getProject(job.projectId);
@@ -205,12 +217,22 @@ async function processQueue(): Promise<void> {
 				await saveProject(updatedProject);
 			}
 
-			console.log(`[Queue] Completed job: ${job.command} for ${job.projectId}/${job.pairId}. Success: ${result.success}`);
+			console.log(`[Queue] Completed job: ${job.command} for ${job.projectId}/${job.pairId}. Success: ${result.success}. Duration: ${durationMs}ms`);
 		} catch (e) {
+			const durationMs = Date.now() - startTime;
 			job.status = 'failed';
 			job.completedAt = new Date().toISOString();
 			job.error = e instanceof Error ? e.message : String(e);
 			console.error(`[Queue] Job failed: ${job.command} for ${job.projectId}/${job.pairId}:`, e);
+
+			// Record failure to history
+			await addRunRecord(job.projectId, {
+				command: job.command,
+				pairId: job.pairId,
+				success: false,
+				durationMs,
+				error: job.error
+			});
 
 			// Update project with error
 			try {

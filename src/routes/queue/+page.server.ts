@@ -1,19 +1,28 @@
 import { getQueue } from '$lib/server/queue';
 import { getProjects } from '$lib/server/storage';
+import { getEstimatedDuration } from '$lib/server/history';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const queue = getQueue();
 	const projects = await getProjects();
 
-	// Enrich queue items with project names
-	const enrichedQueue = queue.map((job) => {
-		const project = projects.find((p) => p.id === job.projectId);
-		return {
-			...job,
-			projectName: project?.name || job.projectId
-		};
-	});
+	// Enrich queue items with project names and estimates
+	const enrichedQueue = await Promise.all(
+		queue.map(async (job) => {
+			const project = projects.find((p) => p.id === job.projectId);
+			const estimatedDurationMs = await getEstimatedDuration(
+				job.projectId,
+				job.pairId,
+				job.command
+			);
+			return {
+				...job,
+				projectName: project?.name || job.projectId,
+				estimatedDurationMs
+			};
+		})
+	);
 
 	const queued = enrichedQueue.filter((j) => j.status === 'queued');
 	const running = enrichedQueue.find((j) => j.status === 'running');
@@ -48,6 +57,21 @@ export const load: PageServerLoad = async () => {
 		projectProgress.set(job.projectId, existing);
 	}
 
+	// Calculate estimated time remaining
+	const pendingJobs = [...queued, ...(running ? [running] : [])];
+	let estimatedRemainingMs = 0;
+	for (const job of pendingJobs) {
+		if (job.estimatedDurationMs) {
+			// For running job, subtract elapsed time
+			if (job.status === 'running' && job.startedAt) {
+				const elapsed = Date.now() - new Date(job.startedAt).getTime();
+				estimatedRemainingMs += Math.max(0, job.estimatedDurationMs - elapsed);
+			} else {
+				estimatedRemainingMs += job.estimatedDurationMs;
+			}
+		}
+	}
+
 	return {
 		queued,
 		running,
@@ -58,7 +82,8 @@ export const load: PageServerLoad = async () => {
 			successful: successfulJobs,
 			failed: failedJobs,
 			isActive: queued.length > 0 || running !== undefined,
-			projects: Array.from(projectProgress.values())
+			projects: Array.from(projectProgress.values()),
+			estimatedRemainingMs
 		}
 	};
 };
