@@ -10,6 +10,7 @@
 	import TvIcon from '@lucide/svelte/icons/tv';
 	import WatchIcon from '@lucide/svelte/icons/watch';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+	import AlertCircleIcon from '@lucide/svelte/icons/alert-circle';
 	import type { Viewport, ViewportIcon, UrlPair } from '$lib/types';
 	import { extractHostname } from '$lib/types';
 
@@ -40,6 +41,7 @@
 	// URL pair form state
 	let newPairCanonical = $state('');
 	let newPairCandidate = $state('');
+	let pairError = $state<string | null>(null);
 
 	let asyncCaptureLimit = $state(2);
 	let asyncCompareLimit = $state(10);
@@ -113,35 +115,75 @@
 		return option?.icon || MonitorIcon;
 	}
 
+	function isValidUrl(urlString: string): boolean {
+		try {
+			const url = new URL(urlString);
+			return url.protocol === 'http:' || url.protocol === 'https:';
+		} catch {
+			return false;
+		}
+	}
+
 	function generatePairId(canonicalUrl: string, candidateUrl: string): string {
 		const canonical = extractHostname(canonicalUrl).replace(/\./g, '-');
 		const candidate = extractHostname(candidateUrl).replace(/\./g, '-');
 		return `${canonical}-vs-${candidate}`;
 	}
 
+	// Derived validation states
+	let canonicalValid = $derived(newPairCanonical.trim() === '' || isValidUrl(newPairCanonical));
+	let candidateValid = $derived(newPairCandidate.trim() === '' || isValidUrl(newPairCandidate));
+	let canAddPair = $derived(
+		newPairCanonical.trim() !== '' &&
+		newPairCandidate.trim() !== '' &&
+		isValidUrl(newPairCanonical) &&
+		isValidUrl(newPairCandidate)
+	);
+
 	function addUrlPair() {
-		if (newPairCanonical.trim() && newPairCandidate.trim()) {
-			const id = generatePairId(newPairCanonical, newPairCandidate);
-			if (urlPairs.some((p) => p.id === id)) {
-				return;
-			}
-			urlPairs = [
-				...urlPairs,
-				{
-					id,
-					canonicalUrl: newPairCanonical.trim(),
-					candidateUrl: newPairCandidate.trim()
-				}
-			];
-			newPairCanonical = '';
-			newPairCandidate = '';
-			submitForm();
+		pairError = null;
+
+		if (!newPairCanonical.trim() || !newPairCandidate.trim()) {
+			pairError = 'Both URLs are required';
+			return;
 		}
+
+		if (!isValidUrl(newPairCanonical)) {
+			pairError = 'Reference URL is invalid. Must be a valid http:// or https:// URL';
+			return;
+		}
+
+		if (!isValidUrl(newPairCandidate)) {
+			pairError = 'Candidate URL is invalid. Must be a valid http:// or https:// URL';
+			return;
+		}
+
+		const id = generatePairId(newPairCanonical, newPairCandidate);
+		if (urlPairs.some((p) => p.id === id)) {
+			pairError = 'This URL pair already exists';
+			return;
+		}
+
+		urlPairs = [
+			...urlPairs,
+			{
+				id,
+				canonicalUrl: newPairCanonical.trim(),
+				candidateUrl: newPairCandidate.trim()
+			}
+		];
+		newPairCanonical = '';
+		newPairCandidate = '';
+		submitForm();
 	}
 
 	function removeUrlPair(index: number) {
 		urlPairs = urlPairs.filter((_, i) => i !== index);
 		submitForm();
+	}
+
+	function clearPairError() {
+		pairError = null;
 	}
 </script>
 
@@ -206,7 +248,8 @@
 										type="url"
 										placeholder="https://www.example.com"
 										bind:value={newPairCanonical}
-										class="h-8 bg-background font-mono text-xs"
+										class="h-8 bg-background font-mono text-xs {!canonicalValid ? 'border-destructive focus-visible:ring-destructive' : ''}"
+										oninput={clearPairError}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') {
 												e.preventDefault();
@@ -223,7 +266,8 @@
 										type="url"
 										placeholder="https://staging.example.com"
 										bind:value={newPairCandidate}
-										class="h-8 bg-background font-mono text-xs"
+										class="h-8 bg-background font-mono text-xs {!candidateValid ? 'border-destructive focus-visible:ring-destructive' : ''}"
+										oninput={clearPairError}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') {
 												e.preventDefault();
@@ -239,7 +283,7 @@
 										type="button"
 										class="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
 										onclick={addUrlPair}
-										disabled={!newPairCanonical.trim() || !newPairCandidate.trim()}
+										disabled={!canAddPair}
 									>
 										<PlusIcon class="h-4 w-4" />
 									</Button>
@@ -248,7 +292,13 @@
 						</TableBody>
 					</Table>
 				</div>
-				<div class="mt-4 text-xs text-muted-foreground">
+				{#if pairError}
+					<div class="mt-3 flex items-center gap-2 text-sm text-destructive">
+						<AlertCircleIcon class="h-4 w-4 shrink-0" />
+						{pairError}
+					</div>
+				{/if}
+				<div class="mt-3 text-xs text-muted-foreground">
 					{urlPairs.length} URL pair{urlPairs.length === 1 ? '' : 's'} configured
 				</div>
 			</CardContent>
