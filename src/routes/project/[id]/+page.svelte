@@ -8,6 +8,7 @@
 	import Loader2Icon from '@lucide/svelte/icons/loader-2';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import { formatDistanceToNow } from 'date-fns';
 
 	import { Button } from '$lib/components/ui/button';
@@ -324,6 +325,16 @@ This action cannot be undone."
 				<Button variant="ghost" size="sm" href={reportUrl} target="_blank" class="cursor-pointer">
 					<ExternalLinkIcon class="h-3.5 w-3.5 mr-1.5" />
 					Open Report
+				</Button>
+				<Button 
+					variant="ghost" 
+					size="sm" 
+					href="/api/export/{project.id}/{selectedPair?.id}" 
+					class="cursor-pointer"
+					title="Download report as ZIP for offline viewing"
+				>
+					<DownloadIcon class="h-3.5 w-3.5 mr-1.5" />
+					Export
 				</Button>
 			{/if}
 		</div>
