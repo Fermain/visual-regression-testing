@@ -1,14 +1,26 @@
 import * as db from '$lib/server/storage';
 import { redirect, fail } from '@sveltejs/kit';
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 import { randomUUID } from 'node:crypto';
+
+export const load: PageServerLoad = async () => {
+	const projects = await db.getProjects();
+	const pathMap: Record<string, string[]> = {};
+
+	for (const project of projects) {
+		for (const p of project.paths) {
+			if (!pathMap[p]) pathMap[p] = [];
+			pathMap[p].push(project.name);
+		}
+	}
+
+	return { pathMap };
+};
 
 export const actions: Actions = {
 	default: async ({ request }) => {
 		const data = await request.formData();
 		const name = data.get('name') as string;
-		const canonicalBaseUrl = data.get('canonicalBaseUrl') as string;
-		const candidateBaseUrl = data.get('candidateBaseUrl') as string;
 		const pathsStr = data.get('paths') as string;
 		const delayStr = data.get('delay') as string;
 		const clickSelector = data.get('clickSelector') as string;
@@ -28,8 +40,6 @@ export const actions: Actions = {
 		const newProject = {
 			id: randomUUID(),
 			name: name.trim(),
-			canonicalBaseUrl: canonicalBaseUrl?.trim() || '',
-			candidateBaseUrl: candidateBaseUrl?.trim() || '',
 			paths,
 			delay: delayStr ? parseInt(delayStr, 10) : undefined,
 			clickSelector: clickSelector?.trim() || undefined,

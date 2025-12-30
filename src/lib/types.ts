@@ -7,17 +7,15 @@ export interface Viewport {
 	icon?: ViewportIcon;
 }
 
-export interface Project {
+export interface UrlPair {
 	id: string;
-	name: string;
-	canonicalBaseUrl: string;
-	candidateBaseUrl: string;
-	paths: string[];
-	delay?: number;
-	clickSelector?: string;
-	postInteractionWait?: number;
+	canonicalUrl: string;
+	candidateUrl: string;
+}
+
+export interface PairResult {
+	status: 'idle' | 'running';
 	lastRun?: string;
-	status?: 'idle' | 'running';
 	lastResult?: {
 		success: boolean;
 		command: 'reference' | 'test' | 'approve';
@@ -30,8 +28,19 @@ export interface Project {
 	};
 }
 
+export interface Project {
+	id: string;
+	name: string;
+	paths: string[];
+	delay?: number;
+	clickSelector?: string;
+	postInteractionWait?: number;
+	pairResults?: Record<string, PairResult>;
+}
+
 export interface Settings {
 	viewports: Viewport[];
+	urlPairs: UrlPair[];
 	asyncCaptureLimit: number;
 	asyncCompareLimit: number;
 	waitTimeout: number;
@@ -43,10 +52,31 @@ export const DEFAULT_VIEWPORTS: Viewport[] = [
 	{ label: 'mobile', width: 390, height: 844, icon: 'smartphone' }
 ];
 
+export const DEFAULT_URL_PAIRS: UrlPair[] = [];
+
 export const DEFAULT_SETTINGS: Settings = {
 	viewports: DEFAULT_VIEWPORTS,
+	urlPairs: DEFAULT_URL_PAIRS,
 	asyncCaptureLimit: 2,
 	asyncCompareLimit: 10,
 	waitTimeout: 120000,
 	gotoTimeout: 120000
 };
+
+export function getPairDisplayName(pair: UrlPair): string {
+	try {
+		const canonical = new URL(pair.canonicalUrl).hostname;
+		const candidate = new URL(pair.candidateUrl).hostname;
+		return `${canonical} → ${candidate}`;
+	} catch {
+		return `${pair.canonicalUrl} → ${pair.candidateUrl}`;
+	}
+}
+
+export function extractHostname(url: string): string {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return url;
+	}
+}

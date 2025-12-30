@@ -5,7 +5,19 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ params }) => {
 	const project = await db.getProject(params.id);
 	if (!project) throw error(404, 'Project not found');
-	return { project };
+
+	const projects = await db.getProjects();
+	const pathMap: Record<string, string[]> = {};
+
+	for (const p of projects) {
+		if (p.id === params.id) continue;
+		for (const path of p.paths) {
+			if (!pathMap[path]) pathMap[path] = [];
+			pathMap[path].push(p.name);
+		}
+	}
+
+	return { project, pathMap };
 };
 
 export const actions: Actions = {
@@ -15,8 +27,6 @@ export const actions: Actions = {
 		if (!project) return fail(404, { error: 'Project not found' });
 
 		const name = data.get('name') as string;
-		const canonicalBaseUrl = data.get('canonicalBaseUrl') as string;
-		const candidateBaseUrl = data.get('candidateBaseUrl') as string;
 		const pathsStr = data.get('paths') as string;
 		const delayStr = data.get('delay') as string;
 		const clickSelector = data.get('clickSelector') as string;
@@ -27,8 +37,6 @@ export const actions: Actions = {
 		}
 
 		project.name = name.trim();
-		project.canonicalBaseUrl = canonicalBaseUrl?.trim() || '';
-		project.candidateBaseUrl = candidateBaseUrl?.trim() || '';
 		project.paths = pathsStr
 			? pathsStr
 					.split('\n')

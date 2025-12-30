@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
+	import { page } from '$app/stores';
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import FileCheckIcon from '@lucide/svelte/icons/file-check';
@@ -20,18 +21,30 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	// Get selectedPair from parent layout data via $page.data
+	let selectedPair = $derived($page.data.selectedPair);
+	let urlPairs = $derived($page.data.urlPairs || []);
+
 	// Derived state from project data
 	let project = $derived(data.project);
+	let pairResult = $derived(data.pairResult);
 	let report = $derived(data.report);
 	let hasReport = $derived(report !== null);
 	let hasReference = $derived(data.hasReference);
-	let reportUrl = $derived(project ? `/report/${project.id}/html_report/index.html` : '');
+	let reportUrl = $derived(
+		project && selectedPair
+			? `/report/${project.id}/${selectedPair.id}/html_report/index.html`
+			: ''
+	);
+	let referenceBasePath = $derived(
+		project && selectedPair ? `/report/${project.id}/${selectedPair.id}` : ''
+	);
 
 	// Status management
 	let isRunning = $state(false);
 	let runningCommand = $state<'reference' | 'test' | 'approve' | null>(null);
 	let pollInterval: ReturnType<typeof setInterval>;
-	let progress = $derived(project.progress);
+	let progress = $derived(pairResult?.progress);
 
 	// Report Stats
 	let reportStats = $derived.by(() => {
@@ -42,11 +55,10 @@
 		return { total, failed, passed };
 	});
 
-	// Sync local running state with server status
+	// Sync local running state with server status for the current pair
 	$effect(() => {
-		if (project.status === 'running') {
+		if (pairResult?.status === 'running') {
 			isRunning = true;
-			// Start polling if not already polling
 			if (!pollInterval) {
 				pollInterval = setInterval(() => {
 					invalidateAll();
@@ -157,7 +169,7 @@ This action cannot be undone."
 			<div class="flex-1 w-full overflow-auto p-8 flex items-start justify-center">
 				{#if lightboxImage}
 					<img 
-						src="/report/{project.id}/bitmaps_reference/{lightboxImage}" 
+						src="{referenceBasePath}/bitmaps_reference/{lightboxImage}" 
 						alt={lightboxImage}
 						class="max-w-full h-auto object-contain shadow-2xl rounded-sm"
 					/>
@@ -186,30 +198,29 @@ This action cannot be undone."
 				bind:this={formEl}
 				use:enhance={({ formData }) => {
 					const cmd = formData.get('command') as 'reference' | 'test' | 'approve';
-					// Optimistic UI update
 					isRunning = true;
 					runningCommand = cmd;
 					
 					return async ({ update }) => {
 						await update();
-						// We rely on polling for the actual completion state
 					};
 				}}
 				class="flex items-center gap-2"
 			>
+				<input type="hidden" name="pairId" value={selectedPair?.id || ''} />
 				<input type="radio" name="command" value="reference" class="hidden" />
 				<input type="radio" name="command" value="test" class="hidden" />
 				<input type="radio" name="command" value="approve" class="hidden" />
 
 				<Button
 					type="button"
-					disabled={isRunning}
+					disabled={isRunning || !selectedPair}
 					variant={!hasReference ? "default" : "secondary"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
 					onclick={() => handleButtonClick('reference')}
 				>
-					{#if runningCommand === 'reference' || (project.status === 'running' && !runningCommand)}
+					{#if runningCommand === 'reference' || (pairResult?.status === 'running' && !runningCommand)}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 					{:else}
 						<EyeIcon class="mr-1.5 h-3.5 w-3.5" />
@@ -219,13 +230,13 @@ This action cannot be undone."
 
 				<Button
 					type="button"
-					disabled={isRunning || !hasReference}
+					disabled={isRunning || !hasReference || !selectedPair}
 					variant={hasReference && (!hasReport || (reportStats?.passed === reportStats?.total)) ? "default" : "secondary"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed"
 					onclick={() => handleButtonClick('test')}
 				>
-					{#if runningCommand === 'test' || (project.status === 'running' && !runningCommand)}
+					{#if runningCommand === 'test' || (pairResult?.status === 'running' && !runningCommand)}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 					{:else}
 						<PlayIcon class="mr-1.5 h-3.5 w-3.5" />
@@ -235,13 +246,13 @@ This action cannot be undone."
 
 				<Button
 					type="button"
-					disabled={isRunning || !hasReport || reportStats?.failed === 0}
+					disabled={isRunning || !hasReport || reportStats?.failed === 0 || !selectedPair}
 					variant={reportStats?.failed > 0 ? "default" : "outline"}
 					size="sm"
 					class="cursor-pointer disabled:cursor-not-allowed hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50"
 					onclick={() => handleButtonClick('approve')}
 				>
-					{#if runningCommand === 'approve' || (project.status === 'running' && !runningCommand)}
+					{#if runningCommand === 'approve' || (pairResult?.status === 'running' && !runningCommand)}
 						<Loader2Icon class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 					{:else}
 						<FileCheckIcon class="mr-1.5 h-3.5 w-3.5" />
@@ -272,14 +283,14 @@ This action cannot be undone."
 				</div>
 			{/if}
 
-			{#if project.lastResult && !isRunning && !reportStats}
-				{#if project.lastResult.success}
+			{#if pairResult?.lastResult && !isRunning && !reportStats}
+				{#if pairResult.lastResult.success}
 					<Badge variant="outline" class="text-xs border-green-500/50 text-green-500">
-						{project.lastResult.command} completed
+						{pairResult.lastResult.command} completed
 					</Badge>
 				{:else}
 					<Badge variant="destructive" class="text-xs">
-						Error: {project.lastResult.error || 'Failed'}
+						Error: {pairResult.lastResult.error || 'Failed'}
 					</Badge>
 				{/if}
 			{/if}
@@ -299,9 +310,9 @@ This action cannot be undone."
 		</div>
 
 		<div class="flex items-center gap-2">
-			{#if project.lastRun}
+			{#if pairResult?.lastRun}
 				<span class="text-xs text-muted-foreground">
-					Last run: {formatDistanceToNow(new Date(project.lastRun), { addSuffix: true })}
+					Last run: {formatDistanceToNow(new Date(pairResult.lastRun), { addSuffix: true })}
 				</span>
 			{/if}
 			<Button variant="ghost" size="sm" href="/project/{project.id}/edit" class="cursor-pointer">
@@ -345,7 +356,7 @@ This action cannot be undone."
 									onclick={() => openLightbox(image)}
 								>
 									<img 
-										src="/report/{project.id}/bitmaps_reference/{image}" 
+										src="{referenceBasePath}/bitmaps_reference/{image}" 
 										alt={image}
 										class="absolute inset-0 w-full h-full object-contain p-2"
 										loading="lazy"
@@ -370,14 +381,18 @@ This action cannot be undone."
 					<PlayIcon class="h-10 w-10 opacity-20" />
 				</div>
 				<p class="font-medium text-lg">No report available</p>
-				<p class="text-sm max-w-md">
-					Configure your project URLs and paths, then run a test to generate the visual regression report.
-				</p>
-				{#if !project.canonicalBaseUrl || !project.candidateBaseUrl}
-					<Button variant="outline" href="/project/{project.id}/edit" class="mt-4 cursor-pointer">
+				{#if urlPairs.length === 0}
+					<p class="text-sm max-w-md">
+						Configure URL pairs in settings, then run a test to generate the visual regression report.
+					</p>
+					<Button variant="outline" href="/settings" class="mt-4 cursor-pointer">
 						<SettingsIcon class="h-4 w-4 mr-2" />
-						Configure Project
+						Configure URL Pairs
 					</Button>
+				{:else}
+					<p class="text-sm max-w-md">
+						Select a URL pair and run a test to generate the visual regression report.
+					</p>
 				{/if}
 				{#if form?.command === 'reference' && form?.success}
 					<p class="text-sm text-green-500 mt-4">

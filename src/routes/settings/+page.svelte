@@ -9,7 +9,9 @@
 	import LaptopIcon from '@lucide/svelte/icons/laptop';
 	import TvIcon from '@lucide/svelte/icons/tv';
 	import WatchIcon from '@lucide/svelte/icons/watch';
-	import type { Viewport, ViewportIcon } from '$lib/types';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+	import type { Viewport, ViewportIcon, UrlPair } from '$lib/types';
+	import { extractHostname } from '$lib/types';
 
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -28,11 +30,16 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let viewports = $state<Viewport[]>([]);
+	let urlPairs = $state<UrlPair[]>([]);
 	let newLabel = $state('');
 	let newWidth = $state(1280);
 	let newHeight = $state(800);
 	let newIcon = $state<ViewportIcon>('monitor');
 	let formEl = $state<HTMLFormElement | null>(null);
+
+	// URL pair form state
+	let newPairCanonical = $state('');
+	let newPairCandidate = $state('');
 
 	let asyncCaptureLimit = $state(2);
 	let asyncCompareLimit = $state(10);
@@ -41,6 +48,7 @@
 
 	$effect(() => {
 		viewports = [...data.settings.viewports];
+		urlPairs = [...(data.settings.urlPairs || [])];
 		asyncCaptureLimit = data.settings.asyncCaptureLimit ?? 2;
 		asyncCompareLimit = data.settings.asyncCompareLimit ?? 10;
 		waitTimeout = data.settings.waitTimeout ?? 120000;
@@ -104,11 +112,147 @@
 		const option = iconOptions.find((o) => o.value === iconName);
 		return option?.icon || MonitorIcon;
 	}
+
+	function generatePairId(canonicalUrl: string, candidateUrl: string): string {
+		const canonical = extractHostname(canonicalUrl).replace(/\./g, '-');
+		const candidate = extractHostname(candidateUrl).replace(/\./g, '-');
+		return `${canonical}-vs-${candidate}`;
+	}
+
+	function addUrlPair() {
+		if (newPairCanonical.trim() && newPairCandidate.trim()) {
+			const id = generatePairId(newPairCanonical, newPairCandidate);
+			if (urlPairs.some((p) => p.id === id)) {
+				return;
+			}
+			urlPairs = [
+				...urlPairs,
+				{
+					id,
+					canonicalUrl: newPairCanonical.trim(),
+					candidateUrl: newPairCandidate.trim()
+				}
+			];
+			newPairCanonical = '';
+			newPairCandidate = '';
+			submitForm();
+		}
+	}
+
+	function removeUrlPair(index: number) {
+		urlPairs = urlPairs.filter((_, i) => i !== index);
+		submitForm();
+	}
 </script>
 
 <div class="flex-1 overflow-auto p-6">
 	<form method="POST" action="?/save" use:enhance bind:this={formEl} class="space-y-6">
 		<input type="hidden" name="viewports" value={JSON.stringify(viewports)} />
+		<input type="hidden" name="urlPairs" value={JSON.stringify(urlPairs)} />
+
+		<Card>
+			<CardHeader>
+				<CardTitle>URL Pairs</CardTitle>
+				<CardDescription>
+					Define environment pairs for visual regression testing. Each pair compares a reference URL
+					(e.g., production) against a candidate URL (e.g., staging).
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<div class="rounded-md border overflow-hidden">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Reference (Canonical)</TableHead>
+								<TableHead class="w-[40px]"></TableHead>
+								<TableHead>Candidate (Test)</TableHead>
+								<TableHead class="w-[40px]"></TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{#each urlPairs as pair, i}
+								<TableRow>
+									<TableCell class="py-2">
+										<Badge variant="outline" class="font-mono text-xs">
+											{extractHostname(pair.canonicalUrl)}
+										</Badge>
+									</TableCell>
+									<TableCell class="py-2 text-muted-foreground">
+										<ArrowRightIcon class="h-4 w-4" />
+									</TableCell>
+									<TableCell class="py-2">
+										<Badge variant="outline" class="font-mono text-xs">
+											{extractHostname(pair.candidateUrl)}
+										</Badge>
+									</TableCell>
+									<TableCell class="py-2">
+										<Button
+											variant="ghost"
+											size="icon"
+											type="button"
+											class="h-6 w-6 text-muted-foreground hover:text-destructive cursor-pointer"
+											onclick={() => removeUrlPair(i)}
+										>
+											<XIcon class="h-3 w-3" />
+										</Button>
+									</TableCell>
+								</TableRow>
+							{/each}
+
+							<!-- Add new URL pair row -->
+							<TableRow class="bg-muted/20">
+								<TableCell class="py-2">
+									<Input
+										type="url"
+										placeholder="https://www.example.com"
+										bind:value={newPairCanonical}
+										class="h-8 bg-background font-mono text-xs"
+										onkeydown={(e) => {
+											if (e.key === 'Enter') {
+												e.preventDefault();
+												addUrlPair();
+											}
+										}}
+									/>
+								</TableCell>
+								<TableCell class="py-2 text-muted-foreground">
+									<ArrowRightIcon class="h-4 w-4" />
+								</TableCell>
+								<TableCell class="py-2">
+									<Input
+										type="url"
+										placeholder="https://staging.example.com"
+										bind:value={newPairCandidate}
+										class="h-8 bg-background font-mono text-xs"
+										onkeydown={(e) => {
+											if (e.key === 'Enter') {
+												e.preventDefault();
+												addUrlPair();
+											}
+										}}
+									/>
+								</TableCell>
+								<TableCell class="py-2">
+									<Button
+										variant="ghost"
+										size="icon"
+										type="button"
+										class="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+										onclick={addUrlPair}
+										disabled={!newPairCanonical.trim() || !newPairCandidate.trim()}
+									>
+										<PlusIcon class="h-4 w-4" />
+									</Button>
+								</TableCell>
+							</TableRow>
+						</TableBody>
+					</Table>
+				</div>
+				<div class="mt-4 text-xs text-muted-foreground">
+					{urlPairs.length} URL pair{urlPairs.length === 1 ? '' : 's'} configured
+				</div>
+			</CardContent>
+		</Card>
 		
 		<Card>
 			<CardHeader>

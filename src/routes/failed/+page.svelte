@@ -25,6 +25,7 @@
 				<TableHeader>
 					<TableRow>
 						<TableHead>Project</TableHead>
+						<TableHead>URL Pair</TableHead>
 						<TableHead>Path</TableHead>
 						<TableHead>Viewport</TableHead>
 						<TableHead class="text-right">Diff %</TableHead>
@@ -35,9 +36,12 @@
 					{#each data.failed as f}
 						<TableRow>
 							<TableCell>
-								<a href="/project/{f.projectId}" class="text-blue-600 hover:underline">
+								<a href="/project/{f.projectId}?pair={f.pairId}" class="text-blue-600 hover:underline">
 									{f.projectName}
 								</a>
+							</TableCell>
+							<TableCell>
+								<Badge variant="secondary" class="text-xs font-mono">{f.pairDisplay}</Badge>
 							</TableCell>
 							<TableCell class="font-mono text-sm">{f.label}</TableCell>
 							<TableCell>

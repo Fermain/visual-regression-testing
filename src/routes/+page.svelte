@@ -33,6 +33,7 @@
 					<tr>
 						<th class="text-left font-medium text-muted-foreground px-4 py-2 w-8"></th>
 						<th class="text-left font-medium text-muted-foreground px-4 py-2">Project</th>
+						<th class="text-left font-medium text-muted-foreground px-4 py-2">URL Pair</th>
 						<th class="text-left font-medium text-muted-foreground px-4 py-2">Status</th>
 						<th class="text-left font-medium text-muted-foreground px-4 py-2">Tests</th>
 						<th class="text-left font-medium text-muted-foreground px-4 py-2">When</th>
@@ -51,9 +52,12 @@
 								{/if}
 							</td>
 							<td class="px-4 py-2">
-								<a href="/project/{run.projectId}" class="font-medium hover:text-primary hover:underline">
+								<a href="/project/{run.projectId}?pair={run.pairId}" class="font-medium hover:text-primary hover:underline">
 									{run.projectName}
 								</a>
+							</td>
+							<td class="px-4 py-2">
+								<Badge variant="secondary" class="text-xs font-mono">{run.pairDisplay}</Badge>
 							</td>
 							<td class="px-4 py-2">
 								{#if allPassed}

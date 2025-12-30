@@ -25,6 +25,7 @@
 				<TableHeader>
 					<TableRow>
 						<TableHead>Project</TableHead>
+						<TableHead>URL Pair</TableHead>
 						<TableHead>Path</TableHead>
 						<TableHead>Viewport</TableHead>
 						<TableHead>URLs</TableHead>
@@ -34,9 +35,12 @@
 					{#each data.passing as p}
 						<TableRow>
 							<TableCell>
-								<a href="/project/{p.projectId}" class="text-blue-600 hover:underline">
+								<a href="/project/{p.projectId}?pair={p.pairId}" class="text-blue-600 hover:underline">
 									{p.projectName}
 								</a>
+							</TableCell>
+							<TableCell>
+								<Badge variant="secondary" class="text-xs font-mono">{p.pairDisplay}</Badge>
 							</TableCell>
 							<TableCell class="font-mono text-sm">{p.label}</TableCell>
 							<TableCell>
