@@ -57,12 +57,24 @@ module.exports = async (page, scenario) => {
 		log(`Hidden ${scenario.hideSelectors.length} selector(s)`);
 	}
 
-	// 5. FORCE LAZY MEDIA + FREEZE VIDEOS
+	// 5. FORCE LAZY MEDIA + FORCE SYNCHRONOUS DECODING + FREEZE VIDEOS
 	const lazyInfo = await page.evaluate(() => {
 		let lazified = 0;
 
-		// Remove native lazy loading
-		document.querySelectorAll('img[loading="lazy"], video[loading="lazy"]').forEach((el) => {
+		// Remove native lazy loading AND force synchronous decoding
+		document.querySelectorAll('img').forEach((img) => {
+			// Remove lazy loading
+			if (img.loading === 'lazy') {
+				img.removeAttribute('loading');
+				lazified++;
+			}
+			// Force synchronous decoding - CRITICAL for consistent screenshots
+			if (img.decoding === 'async') {
+				img.decoding = 'sync';
+			}
+		});
+
+		document.querySelectorAll('video[loading="lazy"]').forEach((el) => {
 			el.removeAttribute('loading');
 		});
 
@@ -113,88 +125,108 @@ module.exports = async (page, scenario) => {
 	});
 	if (lazyInfo > 0) log(`Triggered ${lazyInfo} lazy element(s)`);
 
-	// 6. PRELOAD ALL IMAGES VIA Image() OBJECTS
-	// This is the most reliable way to ensure images are in browser cache
-	log('Preloading images...');
-	const preload = await page.evaluate((scanBg) => {
-		return new Promise((resolve) => {
-			const urls = new Set();
-
-			// Collect from <img> and <source>
-			document.querySelectorAll('img').forEach((img) => {
-				if (img.src && !img.src.startsWith('data:')) urls.add(img.src);
-				if (img.srcset) {
-					img.srcset.split(',').forEach((e) => {
-						const u = e.trim().split(' ')[0];
-						if (u && !u.startsWith('data:')) urls.add(u);
-					});
-				}
-			});
-			document.querySelectorAll('source[srcset]').forEach((src) => {
-				src.srcset.split(',').forEach((e) => {
-					const u = e.trim().split(' ')[0];
-					if (u && !u.startsWith('data:')) urls.add(u);
-				});
-			});
-
-			// Optional: scan background images (expensive on large DOMs)
-			if (scanBg) {
-				document.querySelectorAll('*').forEach((el) => {
-					try {
-						const bg = getComputedStyle(el).backgroundImage;
-						if (bg && bg !== 'none') {
-							const matches = bg.match(/url\(["']?([^"')]+)["']?\)/g);
-							if (matches) {
-								matches.forEach((m) => {
-									const u = m.replace(/url\(["']?/, '').replace(/["']?\)/, '');
-									if (u && !u.startsWith('data:')) urls.add(u);
-								});
-							}
-						}
-					} catch {}
-				});
-			}
-
-			const arr = Array.from(urls);
-			if (arr.length === 0) return resolve({ total: 0, loaded: 0, failed: 0 });
-
-			let loaded = 0, failed = 0;
-			const failedUrls = [];
-
-			const done = () => {
-				if (loaded + failed >= arr.length) {
-					resolve({ total: arr.length, loaded, failed, failedUrls: failedUrls.slice(0, 5) });
-				}
-			};
-
-			arr.forEach((url) => {
-				const img = new Image();
-				img.onload = () => { loaded++; done(); };
-				img.onerror = () => { failed++; failedUrls.push(url.slice(0, 80)); done(); };
-				img.src = url;
-			});
-
-			setTimeout(() => resolve({ total: arr.length, loaded, failed, timedOut: true, failedUrls: failedUrls.slice(0, 5) }), 12000);
-		});
-	}, scenario.scanBackgroundImages || false);
-
-	log(`Preload: ${preload.loaded}/${preload.total}` + 
-		(preload.failed ? ` (${preload.failed} failed)` : '') +
-		(preload.timedOut ? ' [timeout]' : ''));
-	if (preload.failedUrls?.length) log(`Failed: ${preload.failedUrls.join(', ')}`);
-
-	// 7. WAIT FOR NETWORK IDLE
+	// 6. WAIT FOR NETWORK IDLE FIRST (let all requests complete)
 	try {
-		await page.waitForNetworkIdle({ idleTime: 500, timeout: 8000 });
+		await page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 });
+		log('Network idle');
 	} catch (e) {
 		log(`Network idle timeout: ${e.message}`);
 	}
 
-	// 8. VERIFY IMAGES RENDERED (log warnings, no retry)
+	// 7. DECODE ALL IMAGES USING img.decode() API
+	// This is MORE RELIABLE than just checking naturalWidth because it
+	// ensures the image is fully decoded and ready to paint
+	log('Decoding images...');
+	const decodeResult = await page.evaluate(() => {
+		return new Promise((resolve) => {
+			const images = Array.from(document.querySelectorAll('img'));
+			const validImages = images.filter((img) => {
+				// Skip tiny images, data URIs, and images without src
+				if (!img.src || img.src.startsWith('data:')) return false;
+				if (img.width < 10 && img.height < 10) return false;
+				return true;
+			});
+
+			if (validImages.length === 0) {
+				return resolve({ total: 0, decoded: 0, failed: 0 });
+			}
+
+			let decoded = 0;
+			let failed = 0;
+			const failedUrls = [];
+
+			const checkDone = () => {
+				if (decoded + failed >= validImages.length) {
+					resolve({
+						total: validImages.length,
+						decoded,
+						failed,
+						failedUrls: failedUrls.slice(0, 5)
+					});
+				}
+			};
+
+			validImages.forEach((img) => {
+				// Use decode() API if available - this ensures image is ready to paint
+				if (img.decode) {
+					img.decode()
+						.then(() => {
+							decoded++;
+							checkDone();
+						})
+						.catch(() => {
+							// If decode fails, check if it's already loaded
+							if (img.complete && img.naturalWidth > 0) {
+								decoded++;
+							} else {
+								failed++;
+								failedUrls.push(img.src.slice(0, 80));
+							}
+							checkDone();
+						});
+				} else {
+					// Fallback for browsers without decode()
+					if (img.complete && img.naturalWidth > 0) {
+						decoded++;
+					} else {
+						// Wait for load event
+						img.onload = () => { decoded++; checkDone(); };
+						img.onerror = () => { failed++; failedUrls.push(img.src.slice(0, 80)); checkDone(); };
+						// Force reload if stuck
+						const src = img.src;
+						img.src = '';
+						img.src = src;
+						return; // Don't call checkDone yet
+					}
+					checkDone();
+				}
+			});
+
+			// Timeout after 15 seconds
+			setTimeout(() => {
+				resolve({
+					total: validImages.length,
+					decoded,
+					failed: validImages.length - decoded,
+					timedOut: true,
+					failedUrls: failedUrls.slice(0, 5)
+				});
+			}, 15000);
+		});
+	});
+
+	log(`Decoded: ${decodeResult.decoded}/${decodeResult.total}` +
+		(decodeResult.failed ? ` (${decodeResult.failed} failed)` : '') +
+		(decodeResult.timedOut ? ' [timeout]' : ''));
+	if (decodeResult.failedUrls?.length) {
+		log(`Failed: ${decodeResult.failedUrls.join(', ')}`);
+	}
+
+	// 8. FINAL CHECK - any images still broken?
 	const broken = await page.evaluate(() => {
 		const bad = [];
 		document.querySelectorAll('img').forEach((img) => {
-			if (img.width < 10 && img.height < 10) return; // skip tracking pixels
+			if (img.width < 10 && img.height < 10) return;
 			if (!img.src || img.src.startsWith('data:')) return;
 			if (img.naturalWidth === 0) {
 				bad.push(img.src.slice(0, 80));
@@ -203,11 +235,11 @@ module.exports = async (page, scenario) => {
 		return bad;
 	});
 	if (broken.length > 0) {
-		log(`WARNING: ${broken.length} image(s) did not render:`);
+		log(`WARNING: ${broken.length} image(s) still not rendered:`);
 		broken.slice(0, 5).forEach((u) => log(`  - ${u}`));
 	}
 
-	// 9. SETTLE
-	await new Promise((r) => setTimeout(r, 500));
+	// 9. SETTLE - give browser time to paint
+	await new Promise((r) => setTimeout(r, 1000));
 	log('Ready');
 };
