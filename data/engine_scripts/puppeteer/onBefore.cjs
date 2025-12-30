@@ -1,3 +1,3 @@
 module.exports = async (page, scenario) => {
-	console.log('onBefore: ' + scenario.label);
+	console.log(`[${scenario.label}] onBefore started`);
 };

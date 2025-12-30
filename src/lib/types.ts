@@ -35,6 +35,7 @@ export interface Project {
 	delay?: number;
 	clickSelector?: string;
 	postInteractionWait?: number;
+	hideSelectors?: string[];
 	pairResults?: Record<string, PairResult>;
 }
 

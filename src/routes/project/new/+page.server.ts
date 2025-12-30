@@ -25,6 +25,7 @@ export const actions: Actions = {
 		const delayStr = data.get('delay') as string;
 		const clickSelector = data.get('clickSelector') as string;
 		const postInteractionWaitStr = data.get('postInteractionWait') as string;
+		const hideSelectorsStr = data.get('hideSelectors') as string;
 
 		if (!name?.trim()) {
 			return fail(400, { error: 'Project name is required' });
@@ -37,13 +38,21 @@ export const actions: Actions = {
 					.filter((p) => p)
 			: ['/'];
 
+		const hideSelectors = hideSelectorsStr
+			? hideSelectorsStr
+					.split('\n')
+					.map((s) => s.trim())
+					.filter((s) => s)
+			: undefined;
+
 		const newProject = {
 			id: randomUUID(),
 			name: name.trim(),
 			paths,
 			delay: delayStr ? parseInt(delayStr, 10) : undefined,
 			clickSelector: clickSelector?.trim() || undefined,
-			postInteractionWait: postInteractionWaitStr ? parseInt(postInteractionWaitStr, 10) : undefined
+			postInteractionWait: postInteractionWaitStr ? parseInt(postInteractionWaitStr, 10) : undefined,
+			hideSelectors: hideSelectors && hideSelectors.length > 0 ? hideSelectors : undefined
 		};
 
 		await db.saveProject(newProject);

@@ -33,6 +33,7 @@
 	let delay = $state(data.project.delay ?? 0);
 	let clickSelector = $state(data.project.clickSelector ?? '');
 	let postInteractionWait = $state(data.project.postInteractionWait ?? 500);
+	let hideSelectorsText = $state((data.project.hideSelectors ?? []).join('\n'));
 
 	let deleteDialogOpen = $state(false);
 	let deleteFormEl = $state<HTMLFormElement | null>(null);
@@ -254,6 +255,23 @@ This action cannot be undone."
 					/>
 					<p class="text-xs text-muted-foreground">
 						Time to wait after clicking before capturing (default: 500ms)
+					</p>
+				</div>
+
+				<Separator />
+
+				<div class="space-y-2">
+					<Label for="hideSelectors">Hide Selectors</Label>
+					<Textarea
+						id="hideSelectors"
+						name="hideSelectors"
+						bind:value={hideSelectorsText}
+						placeholder={'.timestamp\n.ad-banner\n[data-testid="dynamic-content"]'}
+						rows={4}
+						class="font-mono text-sm"
+					/>
+					<p class="text-xs text-muted-foreground">
+						CSS selectors to hide before capture (one per line). Use for dynamic content like timestamps, ads, or counters that change between runs.
 					</p>
 				</div>
 			</CardContent>

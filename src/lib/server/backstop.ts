@@ -47,6 +47,9 @@ export async function runBackstop(
 		if (project.postInteractionWait) {
 			scenario.postInteractionWait = project.postInteractionWait;
 		}
+		if (project.hideSelectors && project.hideSelectors.length > 0) {
+			scenario.hideSelectors = project.hideSelectors;
+		}
 
 		return scenario;
 	});

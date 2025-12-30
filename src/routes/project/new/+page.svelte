@@ -31,6 +31,7 @@
 	let delay = $state(0);
 	let clickSelector = $state('');
 	let postInteractionWait = $state(500);
+	let hideSelectorsText = $state('');
 
 	let pathsList = $derived(
 		pathsText
@@ -236,6 +237,23 @@
 					/>
 					<p class="text-xs text-muted-foreground">
 						Time to wait after clicking before capturing (default: 500ms)
+					</p>
+				</div>
+
+				<Separator />
+
+				<div class="space-y-2">
+					<Label for="hideSelectors">Hide Selectors</Label>
+					<Textarea
+						id="hideSelectors"
+						name="hideSelectors"
+						bind:value={hideSelectorsText}
+						placeholder={'.timestamp\n.ad-banner\n[data-testid="dynamic-content"]'}
+						rows={4}
+						class="font-mono text-sm"
+					/>
+					<p class="text-xs text-muted-foreground">
+						CSS selectors to hide before capture (one per line). Use for dynamic content like timestamps, ads, or counters that change between runs.
 					</p>
 				</div>
 			</CardContent>

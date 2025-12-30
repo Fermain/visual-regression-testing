@@ -1,30 +1,64 @@
 module.exports = async (page, scenario) => {
-	console.log('onReady: ' + scenario.label);
+	// Helper to prefix all logs with scenario label
+	const log = (msg) => console.log(`[${scenario.label}] ${msg}`);
 
-	// Click the specified selector if it exists (e.g., cookie consent)
+	log('onReady started');
+
+	// 1. FREEZE ALL CSS ANIMATIONS AND TRANSITIONS
+	// This prevents timing-based visual differences
+	log('Freezing CSS animations and transitions...');
+	await page.addStyleTag({
+		content: `
+			*, *::before, *::after {
+				animation-duration: 0s !important;
+				animation-delay: 0s !important;
+				transition-duration: 0s !important;
+				transition-delay: 0s !important;
+			}
+			/* Also pause any running animations */
+			* {
+				animation-play-state: paused !important;
+			}
+		`
+	});
+
+	// 2. CLICK SELECTOR (e.g., cookie consent)
 	if (scenario.clickSelector) {
 		const selector = scenario.clickSelector;
-		console.log(`Looking for clickSelector: ${selector}`);
+		log(`Looking for clickSelector: ${selector}`);
 		try {
 			await page.waitForSelector(selector, { timeout: 5000 });
-			console.log(`Found ${selector}, clicking...`);
+			log(`Found ${selector}, clicking...`);
 			await page.click(selector);
-			console.log(`Clicked ${selector}`);
+			log(`Clicked ${selector}`);
 		} catch (e) {
-			console.log(`Could not find or click ${selector}: ${e.message}`);
+			log(`Could not find or click ${selector}: ${e.message}`);
 		}
 	}
 
-	// Wait after interaction
+	// 3. POST-INTERACTION WAIT
 	if (scenario.postInteractionWait) {
-		console.log(`Waiting ${scenario.postInteractionWait}ms (postInteractionWait)...`);
+		log(`Waiting ${scenario.postInteractionWait}ms (postInteractionWait)...`);
 		await new Promise((r) => setTimeout(r, scenario.postInteractionWait));
 	}
 
-	// Force lazy media (images + video) to load
-	console.log('Forcing lazy media to load...');
+	// 4. HIDE DYNAMIC CONTENT SELECTORS
+	// Elements that change between runs (timestamps, counters, ads, etc.)
+	if (scenario.hideSelectors && scenario.hideSelectors.length > 0) {
+		log(`Hiding ${scenario.hideSelectors.length} dynamic selector(s)...`);
+		await page.evaluate((selectors) => {
+			selectors.forEach((sel) => {
+				document.querySelectorAll(sel).forEach((el) => {
+					el.style.visibility = 'hidden';
+				});
+			});
+		}, scenario.hideSelectors);
+	}
+
+	// 5. FORCE LAZY MEDIA TO LOAD
+	log('Forcing lazy media to load...');
 	const mediaInfo = await page.evaluate(() => {
-		// 1. Remove native lazy loading
+		// Remove native lazy loading
 		document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
 			img.removeAttribute('loading');
 		});
@@ -32,7 +66,7 @@ module.exports = async (page, scenario) => {
 			vid.removeAttribute('loading');
 		});
 
-		// 2. Handle common lazy-load patterns (data-src, data-lazy-src, etc.)
+		// Handle common lazy-load patterns (data-src, data-lazy-src, etc.)
 		document.querySelectorAll('img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
 			const lazySrc = img.dataset.src || img.dataset.lazySrc || img.dataset.original;
 			if (lazySrc && (!img.src || img.src.includes('data:') || img.src.includes('placeholder'))) {
@@ -46,14 +80,14 @@ module.exports = async (page, scenario) => {
 			}
 		});
 
-		// 3. Handle srcset lazy loading
+		// Handle srcset lazy loading
 		document.querySelectorAll('img[data-srcset]').forEach((img) => {
 			if (img.dataset.srcset) {
 				img.srcset = img.dataset.srcset;
 			}
 		});
 
-		// 4. Handle background images in data attributes
+		// Handle background images in data attributes
 		document.querySelectorAll('[data-bg], [data-background-image]').forEach((el) => {
 			const bg = el.dataset.bg || el.dataset.backgroundImage;
 			if (bg) {
@@ -63,7 +97,7 @@ module.exports = async (page, scenario) => {
 
 		const images = document.querySelectorAll('img');
 
-		// 6. Nudge videos to load first frame and stop autoplay (including video.js players)
+		// Nudge videos to load first frame and stop autoplay
 		const videos = document.querySelectorAll('video');
 		videos.forEach((vid) => {
 			vid.autoplay = false;
@@ -73,7 +107,6 @@ module.exports = async (page, scenario) => {
 				vid.pause();
 				vid.currentTime = 0;
 			} catch {}
-			vid.preload = 'auto';
 			try {
 				vid.muted = true;
 				const playPromise = vid.play();
@@ -111,10 +144,20 @@ module.exports = async (page, scenario) => {
 			videos: videos.length
 		};
 	});
-	console.log('Media info:', JSON.stringify(mediaInfo));
+	log(`Media info: ${JSON.stringify(mediaInfo)}`);
 
-	// Wait for media to load after forcing
-	console.log('Waiting for media to load...');
+	// 6. WAIT FOR NETWORK IDLE
+	// Wait for all network requests to settle (no requests for 500ms)
+	log('Waiting for network idle...');
+	try {
+		await page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 });
+		log('Network is idle.');
+	} catch (e) {
+		log(`Network idle timeout (continuing anyway): ${e.message}`);
+	}
+
+	// 7. WAIT FOR ALL MEDIA TO LOAD
+	log('Waiting for media to load...');
 	await page.evaluate(() => {
 		return new Promise((resolve) => {
 			const images = Array.from(document.querySelectorAll('img'));
@@ -155,8 +198,10 @@ module.exports = async (page, scenario) => {
 			setTimeout(resolve, 12000);
 		});
 	});
-	console.log('Media loading complete.');
+	log('Media loading complete.');
 
-	// Allow layout to settle after media load
+	// 8. FINAL SETTLE TIME
+	// Allow layout to stabilize after all loading
 	await new Promise((resolve) => setTimeout(resolve, 800));
+	log('Ready for screenshot.');
 };
