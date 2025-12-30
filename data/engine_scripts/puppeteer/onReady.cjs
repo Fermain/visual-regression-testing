@@ -163,4 +163,7 @@ module.exports = async (page, scenario) => {
 		});
 	});
 	console.log('Media loading complete.');
+
+	// Allow layout to settle after scroll and media load
+	await new Promise((resolve) => setTimeout(resolve, 300));
 };
