@@ -2,11 +2,12 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getProjects } from '$lib/server/storage';
 import { getSettings } from '$lib/server/settings';
-import { queueRunAll, getQueue } from '$lib/server/queue';
+import { queueRunAll, getQueue, clearCompletedJobs, cancelAllQueued, cancelJob } from '$lib/server/queue';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const body = await request.json().catch(() => ({}));
 	const commands = body.commands || ['reference', 'test'];
+	const pairId = body.pairId; // Optional: only run for this pair
 
 	const projects = await getProjects();
 	const settings = await getSettings();
@@ -20,13 +21,17 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ error: 'No URL pairs configured' }, { status: 400 });
 	}
 
-	const jobs = queueRunAll(projects, pairs, { commands });
+	if (pairId && !pairs.find(p => p.id === pairId)) {
+		return json({ error: 'Selected URL pair not found' }, { status: 400 });
+	}
+
+	const jobs = queueRunAll(projects, pairs, { commands, pairId });
 
 	return json({
 		success: true,
 		message: `Queued ${jobs.length} jobs`,
 		totalProjects: projects.length,
-		totalPairs: pairs.length,
+		totalPairs: pairId ? 1 : pairs.length,
 		commands,
 		queueLength: getQueue().filter((j) => j.status === 'queued').length
 	});
@@ -46,5 +51,27 @@ export const GET: RequestHandler = async () => {
 		queued: queued.slice(0, 20),
 		recent
 	});
+};
+
+export const DELETE: RequestHandler = async ({ request }) => {
+	const body = await request.json().catch(() => ({}));
+	const action = body.action;
+
+	if (action === 'clear-history') {
+		const cleared = clearCompletedJobs();
+		return json({ success: true, cleared });
+	}
+
+	if (action === 'cancel-all') {
+		const cancelled = cancelAllQueued();
+		return json({ success: true, cancelled });
+	}
+
+	if (action === 'cancel-job' && body.jobId) {
+		const cancelled = cancelJob(body.jobId);
+		return json({ success: cancelled });
+	}
+
+	return json({ error: 'Invalid action' }, { status: 400 });
 };
 

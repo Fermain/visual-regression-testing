@@ -43,11 +43,12 @@ export function addJob(
 	pairId: string,
 	command: 'reference' | 'test' | 'approve'
 ): QueueJob {
-	// Check if already queued or running
+	// Check if same command already queued or running for this project/pair
 	const existing = queue.find(
 		(j) =>
 			j.projectId === projectId &&
 			j.pairId === pairId &&
+			j.command === command &&
 			(j.status === 'queued' || j.status === 'running')
 	);
 	if (existing) {
@@ -72,8 +73,70 @@ export function addJob(
 	return job;
 }
 
-export function clearCompletedJobs(): void {
+export function clearCompletedJobs(): number {
+	const before = queue.length;
 	queue = queue.filter((j) => j.status === 'queued' || j.status === 'running');
+	return before - queue.length;
+}
+
+export function cancelJob(jobId: string): boolean {
+	const job = queue.find((j) => j.id === jobId && j.status === 'queued');
+	if (!job) return false;
+	
+	// Remove from queue
+	queue = queue.filter((j) => j.id !== jobId);
+	console.log(`[Queue] Cancelled job: ${jobId}`);
+	
+	// Update project status back to idle
+	(async () => {
+		try {
+			const project = await getProject(job.projectId);
+			if (project?.pairResults?.[job.pairId]?.status === 'queued') {
+				project.pairResults[job.pairId].status = 'idle';
+				await saveProject(project);
+			}
+		} catch {}
+	})();
+	
+	return true;
+}
+
+export function cancelProjectJobs(projectId: string, pairId?: string): number {
+	const toCancel = queue.filter(
+		(j) => j.projectId === projectId && 
+		j.status === 'queued' && 
+		(!pairId || j.pairId === pairId)
+	);
+	
+	toCancel.forEach((job) => {
+		queue = queue.filter((j) => j.id !== job.id);
+	});
+	
+	console.log(`[Queue] Cancelled ${toCancel.length} jobs for project ${projectId}`);
+	
+	// Update project statuses
+	(async () => {
+		try {
+			const project = await getProject(projectId);
+			if (project) {
+				toCancel.forEach((job) => {
+					if (project.pairResults?.[job.pairId]?.status === 'queued') {
+						project.pairResults[job.pairId].status = 'idle';
+					}
+				});
+				await saveProject(project);
+			}
+		} catch {}
+	})();
+	
+	return toCancel.length;
+}
+
+export function cancelAllQueued(): number {
+	const toCancel = queue.filter((j) => j.status === 'queued');
+	queue = queue.filter((j) => j.status !== 'queued');
+	console.log(`[Queue] Cancelled all ${toCancel.length} queued jobs`);
+	return toCancel.length;
 }
 
 async function processQueue(): Promise<void> {
@@ -180,6 +243,7 @@ async function processQueue(): Promise<void> {
 // Run All functionality
 export interface RunAllOptions {
 	commands: ('reference' | 'test')[];
+	pairId?: string; // If specified, only run for this pair
 }
 
 export function queueRunAll(
@@ -189,8 +253,13 @@ export function queueRunAll(
 ): QueueJob[] {
 	const jobs: QueueJob[] = [];
 
+	// Filter to single pair if specified
+	const targetPairs = options.pairId 
+		? pairs.filter(p => p.id === options.pairId)
+		: pairs;
+
 	for (const project of projects) {
-		for (const pair of pairs) {
+		for (const pair of targetPairs) {
 			for (const command of options.commands) {
 				const job = addJob(project.id, pair.id, command);
 				jobs.push(job);
@@ -198,7 +267,7 @@ export function queueRunAll(
 		}
 	}
 
-	console.log(`[Queue] Queued Run All: ${jobs.length} jobs for ${projects.length} projects × ${pairs.length} pairs`);
+	console.log(`[Queue] Queued Run All: ${jobs.length} jobs for ${projects.length} projects × ${targetPairs.length} pair(s)`);
 	return jobs;
 }
 

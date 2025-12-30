@@ -11,6 +11,9 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
+	// Get selected pair from page data
+	let selectedPairId = $derived($page.data.selectedPair?.id);
+
 	const navItems = [
 		{
 			title: 'Tests',
@@ -48,18 +51,26 @@
 
 	async function handleRunAll() {
 		if (isRunningAll) return;
+		
+		if (!selectedPairId) {
+			alert('Please select an environment first');
+			return;
+		}
+		
 		isRunningAll = true;
 
 		try {
 			const res = await fetch('/api/run-all', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ commands: ['reference', 'test'] })
+				body: JSON.stringify({ 
+					commands: ['reference', 'test'],
+					pairId: selectedPairId 
+				})
 			});
 			const data = await res.json();
 
 			if (data.success) {
-				// Navigate to queue page to show progress
 				goto('/queue');
 			} else {
 				alert(data.error || 'Failed to queue jobs');

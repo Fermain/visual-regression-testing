@@ -19,6 +19,7 @@
 
 	import { invalidateAll } from '$app/navigation';
 	import { onDestroy } from 'svelte';
+	import StopCircleIcon from '@lucide/svelte/icons/stop-circle';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -130,6 +131,19 @@
 			submitCommand('approve');
 		}
 		pendingCommand = null;
+	}
+
+	async function cancelQueuedJobs() {
+		if (!project || !selectedPair) return;
+		await fetch('/api/project/cancel', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ 
+				projectId: project.id, 
+				pairId: selectedPair.id 
+			})
+		});
+		invalidateAll();
 	}
 </script>
 
@@ -268,6 +282,14 @@ This action cannot be undone."
 				<div class="flex items-center gap-2 text-xs text-muted-foreground">
 					<Loader2Icon class="h-3 w-3 animate-spin" />
 					<span>Queued{queuePosition > 0 ? ` (#${queuePosition})` : ''}</span>
+					<button 
+						onclick={cancelQueuedJobs}
+						class="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-destructive/10 text-destructive transition-colors"
+						title="Cancel queued jobs"
+					>
+						<StopCircleIcon class="h-3 w-3" />
+						Cancel
+					</button>
 				</div>
 			{:else if isRunning}
 				<div class="flex flex-col gap-1 min-w-[200px]">
