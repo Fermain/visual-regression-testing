@@ -1,42 +1,47 @@
-# Visual Regression Testing Suite
+# Visual Regression Testing UI
 
-This is a simple, bare bones project to run BackstopJS.
+This project provides a user-friendly interface for running visual regression tests using [BackstopJS](https://github.com/garris/BackstopJS).
 
-The purpose is to compare two versions of a given static site, one canonical and one candidate.
+It allows you to define projects (scenarios), manage paths and URLs, and execute tests directly from the browser.
 
-## Requirements
+## Features
 
-- Node.js 18+
-- HTTPS-accessible canonical and candidate URLs
+- **Project Management**: Create multiple configurations for different sites or environments.
+- **Easy Configuration**: UI to set Canonical (Reference) and Candidate (Test) URLs.
+- **Path Management**: Simple text list for defining paths to test.
+- **One-Click Execution**: Buttons to generate references, run tests, and approve changes.
+- **Visual Reporting**: Integrated view of test results with diff images.
 
 ## Setup
 
-```bash
-npm install
-```
+1.  Install dependencies:
 
-## Configuration
+    ```bash
+    npm install
+    ```
 
-Set the targets before running BackstopJS:
+2.  Start the development server:
 
-- `CANONICAL_URL`: baseline site root
-- `CANDIDATE_URL`: site root to compare against the baseline
-- `BACKSTOP_PATHS`: optional comma separated list of paths, defaults to `/`
-- `BACKSTOP_SELECTOR`: optional single selector to narrow the capture
+    ```bash
+    npm run dev
+    ```
+
+3.  Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## Usage
 
-- `npm run reference`: capture canonical snapshots for the configured paths
-- `npm test`: compare candidate snapshots against the reference set
-- `npm run approve`: promote the latest candidate snapshots to the reference set
+1.  **Create a Project**: Give it a name (e.g., "My Website").
+2.  **Configure**:
+    - **Canonical URL**: The stable version of your site (e.g., production).
+    - **Candidate URL**: The version you want to test (e.g., staging or localhost).
+    - **Paths**: List the relative paths you want to capture (e.g., `/`, `/about`, `/contact`).
+3.  **Run Reference**: Click "Create Reference" to capture screenshots of the Canonical site.
+4.  **Run Test**: Click "Run Test" to capture screenshots of the Candidate site and compare them.
+5.  **Review**: Check the results below. Failed tests will show a diff image.
+6.  **Approve**: If the changes are expected, click "Approve Changes" to update the Reference bitmaps with the new ones.
 
-Example run:
+## Data Storage
 
-```bash
-CANONICAL_URL=https://example.com \
-CANDIDATE_URL=https://staging.example.com \
-BACKSTOP_PATHS="/,/pricing" \
-npm test
-```
-
-Artifacts and reports land under `data/`. The HTML report opens automatically after a test run.
+- Project configurations are stored in `data/projects.json`.
+- Screenshots and reports are stored in `data/projects/{project-id}/`.
+- You can commit `data/projects.json` to share configurations, but `data/projects/{id}` folders are typically ignored or treated as artifacts.

@@ -1,2 +1,31 @@
-node_modules/
-data/
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Backstop Data
+data/projects.json
+data/projects.json.tmp
+data/settings.json
+data/run-history.json
+data/projects/*
+!data/projects/.keep
