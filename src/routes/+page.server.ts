@@ -1,5 +1,4 @@
-import * as db from '$lib/server/storage';
-import { getSettings } from '$lib/server/settings';
+import * as db from '$lib/server/db';
 import { getPairDisplayName } from '$lib/types';
 import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -35,7 +34,7 @@ interface TestResult {
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
 	const projects = parentData.projects;
-	const settings = await getSettings();
+	const settings = db.getSettings();
 	const urlPairs = settings.urlPairs || [];
 
 	// Load reports for all projects and URL pairs
@@ -98,7 +97,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = data.get('id') as string;
 		if (id) {
-			await db.deleteProject(id);
+			db.deleteProject(id);
 		}
 		redirect(303, '/');
 	}

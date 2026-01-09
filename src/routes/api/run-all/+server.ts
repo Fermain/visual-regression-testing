@@ -1,16 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getProjects } from '$lib/server/storage';
-import { getSettings } from '$lib/server/settings';
+import { getProjects, getSettings } from '$lib/server/db';
 import { queueRunAll, getQueue, clearCompletedJobs, cancelAllQueued, cancelJob } from '$lib/server/queue';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const body = await request.json().catch(() => ({}));
 	const commands = body.commands || ['reference', 'test'];
-	const pairId = body.pairId; // Optional: only run for this pair
+	const pairId = body.pairId;
 
-	const projects = await getProjects();
-	const settings = await getSettings();
+	const projects = getProjects();
+	const settings = getSettings();
 	const pairs = settings.urlPairs || [];
 
 	if (projects.length === 0) {

@@ -1,10 +1,10 @@
-import * as db from '$lib/server/storage';
+import * as db from '$lib/server/db';
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { randomUUID } from 'node:crypto';
 
 export const load: PageServerLoad = async () => {
-	const projects = await db.getProjects();
+	const projects = db.getProjects();
 	const pathMap: Record<string, string[]> = {};
 
 	for (const project of projects) {
@@ -55,7 +55,7 @@ export const actions: Actions = {
 			hideSelectors: hideSelectors && hideSelectors.length > 0 ? hideSelectors : undefined
 		};
 
-		await db.saveProject(newProject);
+		db.saveProject(newProject);
 		redirect(303, `/project/${newProject.id}`);
 	}
 };

@@ -1,5 +1,4 @@
-import * as db from '$lib/server/storage';
-import { getSettings } from '$lib/server/settings';
+import * as db from '$lib/server/db';
 import { addJob, getQueuePosition, getJobStatus } from '$lib/server/queue';
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -7,7 +6,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
-	const project = await db.getProject(params.id);
+	const project = db.getProject(params.id);
 	if (!project) throw error(404, 'Project not found');
 
 	// Get selected pair from parent layout
@@ -72,10 +71,10 @@ export const actions: Actions = {
 				return fail(400, { error: 'Invalid command', success: false });
 			}
 
-			const project = await db.getProject(params.id);
-			if (!project) return fail(404, { error: 'Project not found', success: false });
+		const project = db.getProject(params.id);
+		if (!project) return fail(404, { error: 'Project not found', success: false });
 
-			const settings = await getSettings();
+		const settings = db.getSettings();
 			const urlPair = settings.urlPairs?.find((p) => p.id === pairId);
 			if (!urlPair) return fail(400, { error: 'Invalid URL pair', success: false });
 
@@ -84,13 +83,10 @@ export const actions: Actions = {
 
 			// Update project status to queued if not already running
 			if (job.status === 'queued') {
-				project.pairResults = project.pairResults || {};
-				project.pairResults[pairId] = {
-					...project.pairResults[pairId],
+				db.updatePairResult(params.id, pairId, {
 					status: 'queued',
 					lastRun: new Date().toISOString()
-				};
-				await db.saveProject(project);
+				});
 			}
 
 			return { 

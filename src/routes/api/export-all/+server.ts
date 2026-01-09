@@ -1,7 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getProjects } from '$lib/server/storage';
-import { getSettings } from '$lib/server/settings';
+import { getProjects, getSettings } from '$lib/server/db';
 import { getPairDisplayName } from '$lib/types';
 import archiver from 'archiver';
 import path from 'node:path';
@@ -9,8 +8,8 @@ import { existsSync } from 'node:fs';
 import { PassThrough } from 'node:stream';
 
 export const GET: RequestHandler = async () => {
-	const projects = await getProjects();
-	const settings = await getSettings();
+	const projects = getProjects();
+	const settings = getSettings();
 	const urlPairs = settings.urlPairs || [];
 
 	if (projects.length === 0) {

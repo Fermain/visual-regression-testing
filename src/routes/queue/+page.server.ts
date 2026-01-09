@@ -1,28 +1,20 @@
 import { getQueue } from '$lib/server/queue';
-import { getProjects } from '$lib/server/storage';
-import { getEstimatedDuration } from '$lib/server/history';
+import { getProjects, getEstimatedDuration } from '$lib/server/db';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const queue = getQueue();
-	const projects = await getProjects();
+	const projects = getProjects();
 
-	// Enrich queue items with project names and estimates
-	const enrichedQueue = await Promise.all(
-		queue.map(async (job) => {
-			const project = projects.find((p) => p.id === job.projectId);
-			const estimatedDurationMs = await getEstimatedDuration(
-				job.projectId,
-				job.pairId,
-				job.command
-			);
-			return {
-				...job,
-				projectName: project?.name || job.projectId,
-				estimatedDurationMs
-			};
-		})
-	);
+	const enrichedQueue = queue.map((job) => {
+		const project = projects.find((p) => p.id === job.projectId);
+		const estimatedDurationMs = getEstimatedDuration(job.projectId, job.pairId, job.command);
+		return {
+			...job,
+			projectName: project?.name || job.projectId,
+			estimatedDurationMs
+		};
+	});
 
 	const queued = enrichedQueue.filter((j) => j.status === 'queued');
 	const running = enrichedQueue.find((j) => j.status === 'running');

@@ -1,7 +1,6 @@
 import type { Project, UrlPair } from '$lib/types';
 import { runBackstop } from './backstop';
-import { getProject, saveProject } from './storage';
-import { addRunRecord } from './history';
+import { getProject, saveProject, updatePairResult, addRunRecord } from './db';
 
 export interface QueueJob {
 	id: string;
@@ -88,16 +87,12 @@ export function cancelJob(jobId: string): boolean {
 	queue = queue.filter((j) => j.id !== jobId);
 	console.log(`[Queue] Cancelled job: ${jobId}`);
 	
-	// Update project status back to idle
-	(async () => {
-		try {
-			const project = await getProject(job.projectId);
-			if (project?.pairResults?.[job.pairId]?.status === 'queued') {
-				project.pairResults[job.pairId].status = 'idle';
-				await saveProject(project);
-			}
-		} catch {}
-	})();
+	try {
+		const project = getProject(job.projectId);
+		if (project?.pairResults?.[job.pairId]?.status === 'queued') {
+			updatePairResult(job.projectId, job.pairId, { status: 'idle' });
+		}
+	} catch {}
 	
 	return true;
 }
@@ -115,20 +110,16 @@ export function cancelProjectJobs(projectId: string, pairId?: string): number {
 	
 	console.log(`[Queue] Cancelled ${toCancel.length} jobs for project ${projectId}`);
 	
-	// Update project statuses
-	(async () => {
-		try {
-			const project = await getProject(projectId);
-			if (project) {
-				toCancel.forEach((job) => {
-					if (project.pairResults?.[job.pairId]?.status === 'queued') {
-						project.pairResults[job.pairId].status = 'idle';
-					}
-				});
-				await saveProject(project);
-			}
-		} catch {}
-	})();
+	try {
+		const project = getProject(projectId);
+		if (project) {
+			toCancel.forEach((job) => {
+				if (project.pairResults?.[job.pairId]?.status === 'queued') {
+					updatePairResult(projectId, job.pairId, { status: 'idle' });
+				}
+			});
+		}
+	} catch {}
 	
 	return toCancel.length;
 }
@@ -158,28 +149,21 @@ async function processQueue(): Promise<void> {
 		job.startedAt = new Date().toISOString();
 		console.log(`[Queue] Starting job: ${job.command} for ${job.projectId}/${job.pairId}`);
 
-		// Update project status
 		try {
-			const project = await getProject(job.projectId);
-			if (project) {
-				project.pairResults = project.pairResults || {};
-				project.pairResults[job.pairId] = {
-					status: 'running',
-					lastRun: job.startedAt
-				};
-				await saveProject(project);
-			}
+			updatePairResult(job.projectId, job.pairId, {
+				status: 'running',
+				lastRun: job.startedAt
+			});
 		} catch (e) {
 			console.error('[Queue] Failed to update project status:', e);
 		}
 
-		// Run the job
 		const startTime = Date.now();
 		try {
-			const { getSettings } = await import('./settings');
-			const settings = await getSettings();
+			const { getSettings } = await import('./db');
+			const settings = getSettings();
 			const pair = settings.urlPairs?.find((p) => p.id === job.pairId);
-			const project = await getProject(job.projectId);
+			const project = getProject(job.projectId);
 
 			if (!project || !pair) {
 				throw new Error('Project or pair not found');
@@ -192,8 +176,7 @@ async function processQueue(): Promise<void> {
 			job.completedAt = new Date().toISOString();
 			job.error = result.error;
 
-			// Record to history
-			await addRunRecord(job.projectId, {
+			addRunRecord(job.projectId, {
 				command: job.command,
 				pairId: job.pairId,
 				success: result.success,
@@ -201,21 +184,16 @@ async function processQueue(): Promise<void> {
 				error: result.error
 			});
 
-			// Update project with result
-			const updatedProject = await getProject(job.projectId);
-			if (updatedProject) {
-				updatedProject.pairResults = updatedProject.pairResults || {};
-				updatedProject.pairResults[job.pairId] = {
-					status: 'idle',
-					lastRun: job.completedAt,
-					lastResult: {
-						success: result.success,
-						command: job.command,
-						error: result.error
-					}
-				};
-				await saveProject(updatedProject);
-			}
+			updatePairResult(job.projectId, job.pairId, {
+				status: 'idle',
+				lastRun: job.completedAt,
+				lastResult: {
+					success: result.success,
+					command: job.command,
+					error: result.error
+				},
+				progress: null
+			});
 
 			console.log(`[Queue] Completed job: ${job.command} for ${job.projectId}/${job.pairId}. Success: ${result.success}. Duration: ${durationMs}ms`);
 		} catch (e) {
@@ -225,8 +203,7 @@ async function processQueue(): Promise<void> {
 			job.error = e instanceof Error ? e.message : String(e);
 			console.error(`[Queue] Job failed: ${job.command} for ${job.projectId}/${job.pairId}:`, e);
 
-			// Record failure to history
-			await addRunRecord(job.projectId, {
+			addRunRecord(job.projectId, {
 				command: job.command,
 				pairId: job.pairId,
 				success: false,
@@ -234,22 +211,17 @@ async function processQueue(): Promise<void> {
 				error: job.error
 			});
 
-			// Update project with error
 			try {
-				const project = await getProject(job.projectId);
-				if (project) {
-					project.pairResults = project.pairResults || {};
-					project.pairResults[job.pairId] = {
-						status: 'idle',
-						lastRun: job.completedAt,
-						lastResult: {
-							success: false,
-							command: job.command,
-							error: job.error
-						}
-					};
-					await saveProject(project);
-				}
+				updatePairResult(job.projectId, job.pairId, {
+					status: 'idle',
+					lastRun: job.completedAt,
+					lastResult: {
+						success: false,
+						command: job.command,
+						error: job.error
+					},
+					progress: null
+				});
 			} catch {}
 		}
 

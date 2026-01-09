@@ -1,7 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getProject } from '$lib/server/storage';
-import { getSettings } from '$lib/server/settings';
+import { getProject, getSettings } from '$lib/server/db';
 import { getPairDisplayName } from '$lib/types';
 import archiver from 'archiver';
 import path from 'node:path';
@@ -11,12 +10,12 @@ import { PassThrough } from 'node:stream';
 export const GET: RequestHandler = async ({ params }) => {
 	const { projectId, pairId } = params;
 
-	const project = await getProject(projectId);
+	const project = getProject(projectId);
 	if (!project) {
 		throw error(404, 'Project not found');
 	}
 
-	const settings = await getSettings();
+	const settings = getSettings();
 	const pair = settings.urlPairs?.find((p) => p.id === pairId);
 	if (!pair) {
 		throw error(404, 'URL pair not found');

@@ -1,10 +1,10 @@
-import { getSettings, saveSettings } from '$lib/server/settings';
+import { getSettings, saveSettings } from '$lib/server/db';
 import { extractHostname } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 import type { Viewport, UrlPair } from '$lib/types';
 
 export const load: PageServerLoad = async () => {
-	const settings = await getSettings();
+	const settings = getSettings();
 	return { settings };
 };
 
@@ -60,7 +60,7 @@ export const actions: Actions = {
 			if (waitTimeout < 1000) return { success: false, error: 'Wait timeout must be at least 1000ms' };
 			if (gotoTimeout < 1000) return { success: false, error: 'Goto timeout must be at least 1000ms' };
 
-			await saveSettings({
+			saveSettings({
 				viewports,
 				urlPairs,
 				asyncCaptureLimit,

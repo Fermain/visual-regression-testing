@@ -1,6 +1,6 @@
 import backstop from 'backstopjs';
 import type { Project, UrlPair } from '$lib/types';
-import { getSettings } from '$lib/server/settings';
+import { getSettings, updatePairResult } from '$lib/server/db';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
@@ -122,21 +122,15 @@ export async function runBackstop(
 			}
 		}
 
-		// Initialize progress for this URL pair
-		const { saveProject, getProject } = await import('$lib/server/storage');
-		const pairResult = {
-			status: 'running' as const,
+		updatePairResult(project.id, urlPair.id, {
+			status: 'running',
 			lastRun: new Date().toISOString(),
 			progress: {
 				total: scenarios.length * settings.viewports.length,
 				completed: 0,
 				current: 'Starting...'
 			}
-		};
-
-		project.pairResults = project.pairResults || {};
-		project.pairResults[urlPair.id] = pairResult;
-		await saveProject(project);
+		});
 
 		// Poll progress
 		const bitmapsDir =
@@ -144,6 +138,7 @@ export async function runBackstop(
 				? path.join(dataDir, 'bitmaps_reference')
 				: path.join(dataDir, 'bitmaps_test');
 
+		const totalExpected = scenarios.length * settings.viewports.length;
 		const pollProgress = setInterval(async () => {
 			try {
 				let count = 0;
@@ -163,13 +158,13 @@ export async function runBackstop(
 					}
 				}
 
-				const currentProject = await getProject(project.id);
-				if (currentProject?.pairResults?.[urlPair.id]?.progress) {
-					currentProject.pairResults[urlPair.id].progress!.completed = count;
-					currentProject.pairResults[urlPair.id].progress!.current =
-						`Processed ${count} of ${currentProject.pairResults[urlPair.id].progress!.total}`;
-					await saveProject(currentProject);
-				}
+				updatePairResult(project.id, urlPair.id, {
+					progress: {
+						total: totalExpected,
+						completed: count,
+						current: `Processed ${count} of ${totalExpected}`
+					}
+				});
 			} catch {
 				// Ignore polling errors
 			}

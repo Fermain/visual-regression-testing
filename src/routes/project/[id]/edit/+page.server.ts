@@ -1,12 +1,12 @@
-import * as db from '$lib/server/storage';
+import * as db from '$lib/server/db';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const project = await db.getProject(params.id);
+	const project = db.getProject(params.id);
 	if (!project) throw error(404, 'Project not found');
 
-	const projects = await db.getProjects();
+	const projects = db.getProjects();
 	const pathMap: Record<string, string[]> = {};
 
 	for (const p of projects) {
@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ params }) => {
 export const actions: Actions = {
 	update: async ({ request, params }) => {
 		const data = await request.formData();
-		const project = await db.getProject(params.id);
+		const project = db.getProject(params.id);
 		if (!project) return fail(404, { error: 'Project not found' });
 
 		const name = data.get('name') as string;
@@ -54,11 +54,11 @@ export const actions: Actions = {
 					.filter((s) => s)
 			: undefined;
 
-		await db.saveProject(project);
+		db.saveProject(project);
 		redirect(303, `/project/${params.id}`);
 	},
 	delete: async ({ params }) => {
-		await db.deleteProject(params.id);
+		db.deleteProject(params.id);
 		redirect(303, '/');
 	}
 };

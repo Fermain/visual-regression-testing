@@ -1,5 +1,4 @@
-import { getProjects } from '$lib/server/storage';
-import { getSettings } from '$lib/server/settings';
+import { getProjects, getSettings } from '$lib/server/db';
 import { getPairDisplayName } from '$lib/types';
 import type { PageServerLoad } from './$types';
 import fs from 'node:fs/promises';
@@ -28,8 +27,8 @@ function extractPath(url: string): string {
 }
 
 export const load: PageServerLoad = async () => {
-	const projects = await getProjects();
-	const settings = await getSettings();
+	const projects = getProjects();
+	const settings = getSettings();
 	const urlPairs = settings.urlPairs || [];
 	const failed: FailedPath[] = [];
 
