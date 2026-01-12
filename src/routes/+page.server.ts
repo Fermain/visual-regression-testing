@@ -80,8 +80,11 @@ export const load: PageServerLoad = async ({ parent }) => {
 					tests
 				});
 			} catch (e) {
-				// Log but don't fail - report may be missing, corrupted, or mid-write
-				console.warn(`Failed to read report for ${project.id}/${pair.id}:`, e);
+				// Silently skip if file doesn't exist (expected during reference runs)
+				// Only log unexpected errors
+				if (e && typeof e === 'object' && 'code' in e && e.code !== 'ENOENT') {
+					console.warn(`Failed to read report for ${project.id}/${pair.id}:`, e);
+				}
 			}
 		}
 	}
