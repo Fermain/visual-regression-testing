@@ -33,3 +33,6 @@ data/app.db-wal
 data/app.db-shm
 data/projects/*
 !data/projects/.keep
+playwright-report/index.html
+playwright-report/
+test-results/

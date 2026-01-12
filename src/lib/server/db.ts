@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import type { Project, Settings, Viewport, UrlPair } from '$lib/types';
 import { DEFAULT_SETTINGS } from '$lib/types';
 
-const DATA_DIR = 'data';
+const DATA_DIR = process.env.NODE_ENV === 'test' ? 'data/test' : 'data';
 const DB_PATH = path.join(DATA_DIR, 'app.db');
 
 let db: SqlJsDatabase | null = null;

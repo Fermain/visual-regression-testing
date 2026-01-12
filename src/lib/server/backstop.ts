@@ -11,7 +11,7 @@ import crypto from 'node:crypto';
  * Max filename is typically 255 chars; BackstopJS adds ~50-80 chars for ID/viewport/etc.
  * We limit labels to 80 characters max.
  */
-function generateSafeLabel(urlPath: string): string {
+export function generateSafeLabel(urlPath: string): string {
 	if (urlPath === '/') return 'root';
 
 	// Clean the path: remove leading/trailing slashes, replace slashes with underscores
