@@ -140,6 +140,12 @@ export function cancelAllQueued(): number {
 	return toCancel.length;
 }
 
+export function resetQueue(): void {
+	queue = [];
+	isProcessing = false;
+	console.log('[Queue] Queue has been reset');
+}
+
 async function processQueue(): Promise<void> {
 	if (isProcessing) return;
 	isProcessing = true;

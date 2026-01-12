@@ -8,9 +8,9 @@ import type {
 } from '$lib/types';
 import { updateLinkCheckResult, getSettings } from './db';
 
-const DEFAULT_IGNORED_PARAMS = ['ver', 'v', '_', 't', 'timestamp', 'cache', 'cb', 'nocache'];
+export const DEFAULT_IGNORED_PARAMS = ['ver', 'v', '_', 't', 'timestamp', 'cache', 'cb', 'nocache'];
 
-function normalizeUrl(url: string, ignoreParams: string[]): string {
+export function normalizeUrl(url: string, ignoreParams: string[]): string {
 	try {
 		const parsed = new URL(url);
 		const paramsToRemove = [...DEFAULT_IGNORED_PARAMS, ...ignoreParams];
@@ -87,10 +87,10 @@ export async function runLinkCheck(
 	}
 }
 
-async function executeCheck(
+export async function executeCheck(
 	baseUrl: string,
 	paths: string[],
-	config: NonNullable<Project['linkCheckerConfig']>,
+	config: LinkCheckerConfig,
 	onProgress?: (checked: number, current: string) => void
 ): Promise<LinkCheckRunResult> {
 	const urls = paths.map((p) => {
@@ -135,6 +135,7 @@ async function executeCheck(
 
 	console.log(`[LinkChecker] Running check for: ${urls.join(', ')}`);
 
+	const start = Date.now();
 	const result = await checker.check({
 		path: urls,
 		recurse: false,
@@ -145,6 +146,8 @@ async function executeCheck(
 		retryErrors: true,
 		retryErrorsCount: 3
 	});
+	const duration = Date.now() - start;
+	console.log(`[LinkChecker] Finished check for ${baseUrl} in ${duration}ms. Found ${result.links.length} links.`);
 
 	const failed = result.links.filter((l) => l.state === LinkState.BROKEN).length;
 
