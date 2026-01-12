@@ -12,11 +12,8 @@ describe('database', () => {
 	afterAll(() => {
 		db.closeDb();
 		// Clean up test database
-		if (fs.existsSync('data/test/app.db')) {
-			fs.unlinkSync('data/test/app.db');
-		}
 		if (fs.existsSync('data/test')) {
-			fs.rmdirSync('data/test');
+			fs.rmSync('data/test', { recursive: true, force: true });
 		}
 	});
 

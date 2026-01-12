@@ -1,5 +1,5 @@
 import backstop from 'backstopjs';
-import type { Project, UrlPair } from '$lib/types';
+import type { Project, UrlPair, Settings } from '$lib/types';
 import { getSettings, updatePairResult } from '$lib/server/db';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -28,19 +28,9 @@ export function generateSafeLabel(urlPath: string): string {
 	return `${truncated}_${hash}`;
 }
 
-export async function runBackstop(
-	project: Project,
-	urlPair: UrlPair,
-	command: 'reference' | 'test' | 'approve'
-) {
+export function getBackstopConfig(project: Project, urlPair: UrlPair, settings: Settings) {
 	// Data directory now includes URL pair ID
 	const dataDir = path.resolve(`data/projects/${project.id}/${urlPair.id}`);
-
-	// Ensure directory exists
-	await fs.mkdir(dataDir, { recursive: true });
-
-	// Get global settings
-	const settings = await getSettings();
 
 	const scenarios = project.paths.map((p: string) => {
 		let url = urlPair.candidateUrl;
@@ -79,7 +69,6 @@ export async function runBackstop(
 	});
 
 	// Use short hash-based ID for BackstopJS to minimize filename length
-	// The full project/pair IDs are already used in the directory path
 	const idHash = crypto
 		.createHash('md5')
 		.update(`${project.id}_${urlPair.id}`)
@@ -87,7 +76,7 @@ export async function runBackstop(
 		.slice(0, 12);
 	const backstopId = `bs_${idHash}`;
 
-	const config = {
+	return {
 		id: backstopId,
 		viewports: settings.viewports,
 		onBeforeScript: 'puppeteer/onBefore.cjs',
@@ -101,8 +90,8 @@ export async function runBackstop(
 			ci_report: path.join(dataDir, 'ci_report'),
 			json_report: path.join(dataDir, 'json_report')
 		},
-		report: ['json', 'browser'],
-		engine: 'puppeteer',
+		report: ['json' as const, 'browser' as const],
+		engine: 'puppeteer' as const,
 		engineOptions: {
 			args: ['--no-sandbox'],
 			waitTimeout: settings.waitTimeout ?? 120000,
@@ -114,6 +103,22 @@ export async function runBackstop(
 		debugWindow: false,
 		openReport: false
 	};
+}
+
+export async function runBackstop(
+	project: Project,
+	urlPair: UrlPair,
+	command: 'reference' | 'test' | 'approve'
+) {
+	// Data directory now includes URL pair ID
+	const dataDir = path.resolve(`data/projects/${project.id}/${urlPair.id}`);
+
+	// Ensure directory exists
+	await fs.mkdir(dataDir, { recursive: true });
+
+	// Get global settings
+	const settings = await getSettings();
+	const config = getBackstopConfig(project, urlPair, settings);
 
 	try {
 		// Clean up previous report before running
@@ -130,7 +135,7 @@ export async function runBackstop(
 			status: 'running',
 			lastRun: new Date().toISOString(),
 			progress: {
-				total: scenarios.length * settings.viewports.length,
+				total: config.scenarios.length * settings.viewports.length,
 				completed: 0,
 				current: 'Starting...'
 			}
@@ -142,7 +147,7 @@ export async function runBackstop(
 				? path.join(dataDir, 'bitmaps_reference')
 				: path.join(dataDir, 'bitmaps_test');
 
-		const totalExpected = scenarios.length * settings.viewports.length;
+		const totalExpected = config.scenarios.length * settings.viewports.length;
 		const pollProgress = setInterval(async () => {
 			try {
 				let count = 0;
