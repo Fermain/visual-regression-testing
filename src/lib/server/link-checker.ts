@@ -136,16 +136,27 @@ export async function executeCheck(
 	console.log(`[LinkChecker] Running check for: ${urls.join(', ')}`);
 
 	const start = Date.now();
-	const result = await checker.check({
+	
+	// Add a hard timeout for the entire check
+	const timeoutMs = (config.timeout ?? 120) * 1000;
+	
+	const checkPromise = checker.check({
 		path: urls,
 		recurse: false,
 		concurrency: config.maxConcurrency ?? 10,
-		timeout: (config.timeout ?? 20) * 1000,
+		timeout: 30000, // individual link timeout
 		linksToSkip: config.exclude ?? [],
 		retry: true,
 		retryErrors: true,
 		retryErrorsCount: 3
 	});
+
+	const timeoutPromise = new Promise<never>((_, reject) => 
+		setTimeout(() => reject(new Error(`Link check timed out after ${timeoutMs}ms`)), timeoutMs)
+	);
+
+	const result = await Promise.race([checkPromise, timeoutPromise]);
+	
 	const duration = Date.now() - start;
 	console.log(`[LinkChecker] Finished check for ${baseUrl} in ${duration}ms. Found ${result.links.length} links.`);
 

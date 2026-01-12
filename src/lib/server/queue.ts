@@ -165,12 +165,13 @@ async function processQueue(): Promise<void> {
 		console.log(`[Queue] Starting job: ${job.command} for ${job.projectId}/${job.pairId}`);
 
 		try {
-			updatePairResult(job.projectId, job.pairId, {
-				status: 'running',
-				lastRun: job.startedAt
-			});
 			if (job.command === 'linkcheck') {
 				updateLinkCheckResult(job.projectId, job.pairId, {
+					status: 'running',
+					lastRun: job.startedAt
+				});
+			} else {
+				updatePairResult(job.projectId, job.pairId, {
 					status: 'running',
 					lastRun: job.startedAt
 				});

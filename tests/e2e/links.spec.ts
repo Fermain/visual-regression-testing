@@ -16,34 +16,36 @@ test.describe('Link Checker Workflow', () => {
 		await expect(addPairBtn).toBeEnabled();
 		await addPairBtn.click();
 		
-		// 2. Add exclude pattern to make test fast (skip external links)
+		// Add exclude pattern to make test fast (skip external links)
 		const excludeTextarea = page.locator('#linkCheckerExclude');
 		await excludeTextarea.fill('^(?!http://127\\.0\\.0\\.1:5179).*');
 		
 		await page.getByRole('button', { name: 'Save Settings' }).click();
 		await expect(page.getByText('Settings saved successfully')).toBeVisible();
 
-		// 3. Create project
+		// 2. Create project
 		await page.goto('/project/new');
 		await page.getByLabel('Project Name').fill(projectName);
 		await page.getByRole('button', { name: 'Create Project' }).click();
 		
 		await expect(page).toHaveURL(/\/project\/[a-f0-9-]+/);
 
-		// 4. Select the URL pair
-		await page.getByRole('button', { name: /127\.0\.0\.1/ }).first().click();
-		await page.getByRole('option').filter({ hasText: '127.0.0.1' }).first().click();
+		// URL pair should be auto-selected (it's the only one)
+		// Wait for page to be ready
+		await page.waitForLoadState('networkidle');
 
-		// 5. Run Link Check
-		await page.getByRole('button', { name: 'Check Links' }).click();
+		// 3. Run Link Check
+		const checkLinksBtn = page.getByRole('button', { name: 'Check Links' });
+		await expect(checkLinksBtn).toBeEnabled({ timeout: 10000 });
+		await checkLinksBtn.click();
 		
-		// Wait for job to complete (Check Links button becomes enabled again)
-		await expect(page.getByRole('button', { name: 'Check Links' })).toBeEnabled({ timeout: 90000 });
+		// Wait for job to complete (button becomes enabled again)
+		await expect(checkLinksBtn).toBeEnabled({ timeout: 90000 });
 
-		// 6. Verify results in Link Report tab
+		// 4. Verify results in Link Report tab
 		await page.getByRole('tab', { name: 'Link Report' }).click();
 		
-		// Verify table headers or some content
+		// Verify table is visible with results
 		await expect(page.getByRole('table')).toBeVisible();
 		
 		const rows = page.locator('table tbody tr');

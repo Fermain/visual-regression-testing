@@ -84,7 +84,7 @@ describe('executeCheck', () => {
 			path: ['https://example.com/', 'https://example.com/about'],
 			recurse: false,
 			concurrency: 5,
-			timeout: 10000,
+			timeout: 30000,
 			linksToSkip: ['skip-me'],
 			retry: true,
 			retryErrors: true,
