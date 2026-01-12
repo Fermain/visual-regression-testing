@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	// Get pair-specific result from project
 	const pairResult = selectedPair ? project.pairResults?.[selectedPair.id] : null;
+	const linkCheckResult = selectedPair ? project.linkCheckResults?.[selectedPair.id] : null;
 
 	// Get queue status
 	const queueJob = selectedPair ? getJobStatus(params.id, selectedPair.id) : null;
@@ -52,6 +53,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	return {
 		project,
 		pairResult,
+		linkCheckResult,
 		queueJob,
 		queuePosition,
 		report,
@@ -64,10 +66,10 @@ export const actions: Actions = {
 	run: async ({ request, params }) => {
 		try {
 			const data = await request.formData();
-			const command = data.get('command') as 'reference' | 'test' | 'approve';
+			const command = data.get('command') as 'reference' | 'test' | 'approve' | 'linkcheck';
 			const pairId = data.get('pairId') as string;
 
-			if (!['reference', 'test', 'approve'].includes(command)) {
+			if (!['reference', 'test', 'approve', 'linkcheck'].includes(command)) {
 				return fail(400, { error: 'Invalid command', success: false });
 			}
 
@@ -83,10 +85,17 @@ export const actions: Actions = {
 
 			// Update project status to queued if not already running
 			if (job.status === 'queued') {
-				db.updatePairResult(params.id, pairId, {
-					status: 'queued',
-					lastRun: new Date().toISOString()
-				});
+				if (command === 'linkcheck') {
+					db.updateLinkCheckResult(params.id, pairId, {
+						status: 'queued',
+						lastRun: new Date().toISOString()
+					});
+				} else {
+					db.updatePairResult(params.id, pairId, {
+						status: 'queued',
+						lastRun: new Date().toISOString()
+					});
+				}
 			}
 
 			return { 

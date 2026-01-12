@@ -1,7 +1,7 @@
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js';
 import path from 'node:path';
 import fs from 'node:fs';
-import type { Project, Settings, Viewport, UrlPair } from '$lib/types';
+import type { Project, Settings, Viewport, UrlPair, LinkCheckPairResult } from '$lib/types';
 import { DEFAULT_SETTINGS } from '$lib/types';
 
 const DATA_DIR = process.env.NODE_ENV === 'test' ? 'data/test' : 'data';
@@ -66,6 +66,7 @@ function initSchema(database: SqlJsDatabase) {
 			click_selector TEXT,
 			post_interaction_wait INTEGER,
 			hide_selectors TEXT,
+			lychee_config TEXT,
 			created_at TEXT DEFAULT (datetime('now')),
 			updated_at TEXT DEFAULT (datetime('now'))
 		)
@@ -79,6 +80,20 @@ function initSchema(database: SqlJsDatabase) {
 			last_run TEXT,
 			last_result TEXT,
 			progress TEXT,
+			PRIMARY KEY (project_id, pair_id),
+			FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+		)
+	`);
+
+	database.run(`
+		CREATE TABLE IF NOT EXISTS lychee_results (
+			project_id TEXT NOT NULL,
+			pair_id TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'idle',
+			last_run TEXT,
+			canonical_result TEXT,
+			candidate_result TEXT,
+			error TEXT,
 			PRIMARY KEY (project_id, pair_id),
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 		)
@@ -116,6 +131,13 @@ function initSchema(database: SqlJsDatabase) {
 			applied_at TEXT DEFAULT (datetime('now'))
 		)
 	`);
+
+	// Add lychee_config column if it doesn't exist
+	try {
+		database.run('ALTER TABLE projects ADD COLUMN lychee_config TEXT');
+	} catch (e) {
+		// Column already exists
+	}
 }
 
 function migrateFromJson(database: SqlJsDatabase) {
@@ -308,6 +330,29 @@ export function getProjects(): Project[] {
 		projects.push(project);
 	}
 
+	// Fetch all link check results and attach to projects
+	for (const project of projects) {
+		const lrResult = database.exec('SELECT * FROM lychee_results WHERE project_id = ?', [project.id]);
+		if (lrResult.length > 0 && lrResult[0].values.length > 0) {
+			const lrCols = lrResult[0].columns;
+			project.linkCheckResults = {};
+			for (const lrRow of lrResult[0].values) {
+				const lrObj: Record<string, unknown> = {};
+				lrCols.forEach((col: string, i: number) => {
+					lrObj[col] = lrRow[i];
+				});
+				const pairId = lrObj.pair_id as string;
+				project.linkCheckResults[pairId] = {
+					status: (lrObj.status as 'idle' | 'queued' | 'running') || 'idle',
+					lastRun: (lrObj.last_run as string) ?? undefined,
+					canonical: lrObj.canonical_result ? JSON.parse(lrObj.canonical_result as string) : undefined,
+					candidate: lrObj.candidate_result ? JSON.parse(lrObj.candidate_result as string) : undefined,
+					error: (lrObj.error as string) ?? undefined
+				};
+			}
+		}
+	}
+
 	return projects;
 }
 
@@ -348,6 +393,26 @@ export function getProject(id: string): Project | undefined {
 		}
 	}
 
+	const linkCheckResults = database.exec('SELECT * FROM lychee_results WHERE project_id = ?', [id]);
+	if (linkCheckResults.length > 0 && linkCheckResults[0].values.length > 0) {
+		const lrCols = linkCheckResults[0].columns;
+		project.linkCheckResults = {};
+		for (const lrRow of linkCheckResults[0].values) {
+			const lrObj: Record<string, unknown> = {};
+			lrCols.forEach((col: string, i: number) => {
+				lrObj[col] = lrRow[i];
+			});
+			const pairId = lrObj.pair_id as string;
+			project.linkCheckResults[pairId] = {
+				status: (lrObj.status as 'idle' | 'queued' | 'running') || 'idle',
+				lastRun: (lrObj.last_run as string) ?? undefined,
+				canonical: lrObj.canonical_result ? JSON.parse(lrObj.canonical_result as string) : undefined,
+				candidate: lrObj.candidate_result ? JSON.parse(lrObj.candidate_result as string) : undefined,
+				error: (lrObj.error as string) ?? undefined
+			};
+		}
+	}
+
 	return project;
 }
 
@@ -363,6 +428,7 @@ function rowToProject(row: Record<string, unknown>): Project {
 	if (row.post_interaction_wait !== null)
 		project.postInteractionWait = row.post_interaction_wait as number;
 	if (row.hide_selectors) project.hideSelectors = JSON.parse(row.hide_selectors as string);
+	if (row.lychee_config) project.linkCheckerConfig = JSON.parse(row.lychee_config as string);
 
 	return project;
 }
@@ -371,8 +437,8 @@ export function saveProject(project: Project): void {
 	const database = getDbSync();
 
 	database.run(
-		`INSERT INTO projects (id, name, paths, delay, click_selector, post_interaction_wait, hide_selectors, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+		`INSERT INTO projects (id, name, paths, delay, click_selector, post_interaction_wait, hide_selectors, lychee_config, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 		 ON CONFLICT(id) DO UPDATE SET
 			name = excluded.name,
 			paths = excluded.paths,
@@ -380,6 +446,7 @@ export function saveProject(project: Project): void {
 			click_selector = excluded.click_selector,
 			post_interaction_wait = excluded.post_interaction_wait,
 			hide_selectors = excluded.hide_selectors,
+			lychee_config = excluded.lychee_config,
 			updated_at = datetime('now')`,
 		[
 			project.id,
@@ -388,7 +455,8 @@ export function saveProject(project: Project): void {
 			project.delay ?? null,
 			project.clickSelector ?? null,
 			project.postInteractionWait ?? null,
-			project.hideSelectors ? JSON.stringify(project.hideSelectors) : null
+			project.hideSelectors ? JSON.stringify(project.hideSelectors) : null,
+			project.linkCheckerConfig ? JSON.stringify(project.linkCheckerConfig) : null
 		]
 	);
 
@@ -413,6 +481,83 @@ export function saveProject(project: Project): void {
 			);
 		}
 	}
+
+	if (project.linkCheckResults) {
+		for (const [pairId, result] of Object.entries(project.linkCheckResults)) {
+			database.run(
+				`INSERT INTO lychee_results (project_id, pair_id, status, last_run, canonical_result, candidate_result, error)
+				 VALUES (?, ?, ?, ?, ?, ?, ?)
+				 ON CONFLICT(project_id, pair_id) DO UPDATE SET
+					status = excluded.status,
+					last_run = excluded.last_run,
+					canonical_result = excluded.canonical_result,
+					candidate_result = excluded.candidate_result,
+					error = excluded.error`,
+				[
+					project.id,
+					pairId,
+					result.status,
+					result.lastRun ?? null,
+					result.canonical ? JSON.stringify(result.canonical) : null,
+					result.candidate ? JSON.stringify(result.candidate) : null,
+					result.error ?? null
+				]
+			);
+		}
+	}
+
+	saveDbToFile(database);
+}
+
+export function updateLinkCheckResult(
+	projectId: string,
+	pairId: string,
+	update: Partial<LinkCheckPairResult>
+): void {
+	const database = getDbSync();
+
+	const existing = database.exec(
+		'SELECT * FROM lychee_results WHERE project_id = ? AND pair_id = ?',
+		[projectId, pairId]
+	);
+
+	let status = 'idle';
+	let lastRun: string | null = null;
+	let canonical: string | null = null;
+	let candidate: string | null = null;
+	let error: string | null = null;
+
+	if (existing.length > 0 && existing[0].values.length > 0) {
+		const cols = existing[0].columns;
+		const row = existing[0].values[0];
+		const rowObj: Record<string, unknown> = {};
+		cols.forEach((col: string, i: number) => {
+			rowObj[col] = row[i];
+		});
+		status = (rowObj.status as string) || 'idle';
+		lastRun = rowObj.last_run as string | null;
+		canonical = rowObj.canonical_result as string | null;
+		candidate = rowObj.candidate_result as string | null;
+		error = rowObj.error as string | null;
+	}
+
+	status = update.status ?? status;
+	lastRun = update.lastRun ?? lastRun;
+	canonical = update.canonical !== undefined ? JSON.stringify(update.canonical) : canonical;
+	candidate = update.candidate !== undefined ? JSON.stringify(update.candidate) : candidate;
+	error = update.error ?? error;
+
+	database.run(
+		`INSERT INTO lychee_results (project_id, pair_id, status, last_run, canonical_result, candidate_result, error)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(project_id, pair_id) DO UPDATE SET
+			status = excluded.status,
+			last_run = excluded.last_run,
+			canonical_result = excluded.canonical_result,
+			candidate_result = excluded.candidate_result,
+			error = excluded.error`,
+		[projectId, pairId, status, lastRun, canonical, candidate, error]
+	);
 
 	saveDbToFile(database);
 }
@@ -518,6 +663,9 @@ export function getSettings(): Settings {
 				case 'gotoTimeout':
 					settings.gotoTimeout = parseInt(value, 10);
 					break;
+				case 'lycheeConfig':
+					settings.linkCheckerConfig = JSON.parse(value);
+					break;
 			}
 		}
 	}
@@ -552,6 +700,12 @@ export function saveSettings(settings: Settings): void {
 		'gotoTimeout',
 		String(settings.gotoTimeout)
 	]);
+	if (settings.linkCheckerConfig) {
+		database.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [
+			'lycheeConfig',
+			JSON.stringify(settings.linkCheckerConfig)
+		]);
+	}
 
 	saveDbToFile(database);
 }
@@ -560,7 +714,7 @@ export function saveSettings(settings: Settings): void {
 
 export interface RunRecord {
 	date: string;
-	command: 'reference' | 'test' | 'approve';
+	command: 'reference' | 'test' | 'approve' | 'linkcheck';
 	pairId: string;
 	success: boolean;
 	durationMs: number;
@@ -702,7 +856,7 @@ export function getAllStats(): Record<
 export function getEstimatedDuration(
 	projectId: string,
 	pairId: string,
-	command: 'reference' | 'test' | 'approve'
+	command: 'reference' | 'test' | 'approve' | 'linkcheck'
 ): number | null {
 	const database = getDbSync();
 

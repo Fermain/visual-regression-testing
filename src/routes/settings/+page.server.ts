@@ -17,10 +17,12 @@ export const actions: Actions = {
 		const asyncCompareLimit = Number(data.get('asyncCompareLimit'));
 		const waitTimeout = Number(data.get('waitTimeout'));
 		const gotoTimeout = Number(data.get('gotoTimeout'));
+		const linkCheckerConfigJson = data.get('linkCheckerConfig') as string;
 
 		try {
 			const viewports: Viewport[] = JSON.parse(viewportsJson);
 			const urlPairs: UrlPair[] = JSON.parse(urlPairsJson);
+			const linkCheckerConfig = linkCheckerConfigJson ? JSON.parse(linkCheckerConfigJson) : undefined;
 
 			// Validate viewports
 			if (!Array.isArray(viewports) || viewports.length === 0) {
@@ -66,7 +68,8 @@ export const actions: Actions = {
 				asyncCaptureLimit,
 				asyncCompareLimit,
 				waitTimeout,
-				gotoTimeout
+				gotoTimeout,
+				linkCheckerConfig
 			});
 			return { success: true };
 		} catch (e) {

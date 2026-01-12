@@ -32,6 +32,7 @@ export const actions: Actions = {
 		const clickSelector = data.get('clickSelector') as string;
 		const postInteractionWaitStr = data.get('postInteractionWait') as string;
 		const hideSelectorsStr = data.get('hideSelectors') as string;
+		const linkCheckerConfigJson = data.get('linkCheckerConfig') as string;
 
 		if (!name?.trim()) {
 			return fail(400, { error: 'Project name is required' });
@@ -53,6 +54,7 @@ export const actions: Actions = {
 					.map((s) => s.trim())
 					.filter((s) => s)
 			: undefined;
+		project.linkCheckerConfig = linkCheckerConfigJson ? JSON.parse(linkCheckerConfigJson) : undefined;
 
 		db.saveProject(project);
 		redirect(303, `/project/${params.id}`);

@@ -1,12 +1,13 @@
 import type { Project, UrlPair } from '$lib/types';
 import { runBackstop } from './backstop';
-import { getProject, saveProject, updatePairResult, addRunRecord } from './db';
+import { runLinkCheck } from './link-checker';
+import { getProject, saveProject, updatePairResult, addRunRecord, updateLinkCheckResult } from './db';
 
 export interface QueueJob {
 	id: string;
 	projectId: string;
 	pairId: string;
-	command: 'reference' | 'test' | 'approve';
+	command: 'reference' | 'test' | 'approve' | 'linkcheck';
 	status: 'queued' | 'running' | 'completed' | 'failed';
 	createdAt: string;
 	startedAt?: string;
@@ -41,7 +42,7 @@ export function getJobStatus(projectId: string, pairId: string): QueueJob | null
 export function addJob(
 	projectId: string,
 	pairId: string,
-	command: 'reference' | 'test' | 'approve'
+	command: 'reference' | 'test' | 'approve' | 'linkcheck'
 ): QueueJob {
 	// Check if same command already queued or running for this project/pair
 	const existing = queue.find(
@@ -154,6 +155,12 @@ async function processQueue(): Promise<void> {
 				status: 'running',
 				lastRun: job.startedAt
 			});
+			if (job.command === 'linkcheck') {
+				updateLinkCheckResult(job.projectId, job.pairId, {
+					status: 'running',
+					lastRun: job.startedAt
+				});
+			}
 		} catch (e) {
 			console.error('[Queue] Failed to update project status:', e);
 		}
@@ -169,7 +176,13 @@ async function processQueue(): Promise<void> {
 				throw new Error('Project or pair not found');
 			}
 
-			const result = await runBackstop(project, pair, job.command);
+			let result: { success: boolean; error?: string };
+			if (job.command === 'linkcheck') {
+				result = await runLinkCheck(project, pair);
+			} else {
+				result = await runBackstop(project, pair, job.command);
+			}
+			
 			const durationMs = Date.now() - startTime;
 
 			job.status = result.success ? 'completed' : 'failed';
@@ -184,16 +197,24 @@ async function processQueue(): Promise<void> {
 				error: result.error
 			});
 
-			updatePairResult(job.projectId, job.pairId, {
-				status: 'idle',
-				lastRun: job.completedAt,
-				lastResult: {
-					success: result.success,
-					command: job.command,
+			if (job.command === 'linkcheck') {
+				updateLinkCheckResult(job.projectId, job.pairId, {
+					status: 'idle',
+					lastRun: job.completedAt,
 					error: result.error
-				},
-				progress: null
-			});
+				});
+			} else {
+				updatePairResult(job.projectId, job.pairId, {
+					status: 'idle',
+					lastRun: job.completedAt,
+					lastResult: {
+						success: result.success,
+						command: job.command,
+						error: result.error
+					},
+					progress: null
+				});
+			}
 
 			console.log(`[Queue] Completed job: ${job.command} for ${job.projectId}/${job.pairId}. Success: ${result.success}. Duration: ${durationMs}ms`);
 		} catch (e) {
@@ -212,16 +233,24 @@ async function processQueue(): Promise<void> {
 			});
 
 			try {
-				updatePairResult(job.projectId, job.pairId, {
-					status: 'idle',
-					lastRun: job.completedAt,
-					lastResult: {
-						success: false,
-						command: job.command,
+				if (job.command === 'linkcheck') {
+					updateLinkCheckResult(job.projectId, job.pairId, {
+						status: 'idle',
+						lastRun: job.completedAt,
 						error: job.error
-					},
-					progress: null
-				});
+					});
+				} else {
+					updatePairResult(job.projectId, job.pairId, {
+						status: 'idle',
+						lastRun: job.completedAt,
+						lastResult: {
+							success: false,
+							command: job.command,
+							error: job.error
+						},
+						progress: null
+					});
+				}
 			} catch {}
 		}
 
@@ -236,7 +265,7 @@ async function processQueue(): Promise<void> {
 
 // Run All functionality
 export interface RunAllOptions {
-	commands: ('reference' | 'test')[];
+	commands: ('reference' | 'test' | 'linkcheck')[];
 	pairId?: string; // If specified, only run for this pair
 }
 

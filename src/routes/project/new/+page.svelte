@@ -33,6 +33,11 @@
 	let postInteractionWait = $state(500);
 	let hideSelectorsText = $state('');
 
+	// Link checker config
+	let linkCheckerExclude = $state<string[]>([]);
+	let linkCheckerConcurrency = $state(10);
+	let linkCheckerTimeout = $state(20);
+
 	let pathsList = $derived(
 		pathsText
 			.split('\n')
@@ -256,6 +261,57 @@
 						CSS selectors to hide before capture (one per line). Use for dynamic content like timestamps, ads, or counters that change between runs.
 					</p>
 				</div>
+			</CardContent>
+		</Card>
+
+		<Card>
+			<CardHeader>
+				<CardTitle class="text-base">Link Checker</CardTitle>
+				<CardDescription>
+					Override global link checker settings for this project.
+				</CardDescription>
+			</CardHeader>
+			<CardContent class="space-y-4">
+				<div class="space-y-2">
+					<Label for="linkCheckerExclude">Exclude Patterns</Label>
+					<Textarea
+						id="linkCheckerExclude"
+						placeholder="https://example.com/.*"
+						value={linkCheckerExclude.join('\n')}
+						oninput={(e) => linkCheckerExclude = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						class="font-mono text-xs"
+					/>
+					<p class="text-xs text-muted-foreground">
+						URL patterns to skip (one per line). Supports strings or regex patterns.
+					</p>
+				</div>
+				
+				<div class="grid gap-6 md:grid-cols-2">
+					<div class="space-y-2">
+						<Label for="linkCheckerConcurrency">Max Concurrency</Label>
+						<Input
+							id="linkCheckerConcurrency"
+							type="number"
+							min="1"
+							bind:value={linkCheckerConcurrency}
+						/>
+					</div>
+					<div class="space-y-2">
+						<Label for="linkCheckerTimeout">Timeout (seconds)</Label>
+						<Input
+							id="linkCheckerTimeout"
+							type="number"
+							min="1"
+							bind:value={linkCheckerTimeout}
+						/>
+					</div>
+				</div>
+				
+				<input type="hidden" name="linkCheckerConfig" value={JSON.stringify({
+					exclude: linkCheckerExclude,
+					maxConcurrency: linkCheckerConcurrency,
+					timeout: linkCheckerTimeout
+				})} />
 			</CardContent>
 		</Card>
 

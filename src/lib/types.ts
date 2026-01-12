@@ -28,6 +28,33 @@ export interface PairResult {
 	};
 }
 
+export interface LinkCheckerConfig {
+	exclude?: string[];
+	maxConcurrency?: number;
+	timeout?: number;
+}
+
+export interface LinkResult {
+	url: string;
+	status: string;
+	message?: string;
+}
+
+export interface LinkCheckRunResult {
+	url: string;
+	links: LinkResult[];
+	total: number;
+	failed: number;
+}
+
+export interface LinkCheckPairResult {
+	status: 'idle' | 'queued' | 'running';
+	lastRun?: string;
+	canonical?: LinkCheckRunResult;
+	candidate?: LinkCheckRunResult;
+	error?: string;
+}
+
 export interface Project {
 	id: string;
 	name: string;
@@ -37,6 +64,8 @@ export interface Project {
 	postInteractionWait?: number;
 	hideSelectors?: string[];
 	pairResults?: Record<string, PairResult>;
+	linkCheckerConfig?: LinkCheckerConfig;
+	linkCheckResults?: Record<string, LinkCheckPairResult>;
 }
 
 export interface Settings {
@@ -46,6 +75,7 @@ export interface Settings {
 	asyncCompareLimit: number;
 	waitTimeout: number;
 	gotoTimeout: number;
+	linkCheckerConfig?: LinkCheckerConfig;
 }
 
 export const DEFAULT_VIEWPORTS: Viewport[] = [

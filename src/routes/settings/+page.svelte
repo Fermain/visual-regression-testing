@@ -16,6 +16,8 @@
 
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import {
@@ -48,6 +50,11 @@
 	let waitTimeout = $state(120000);
 	let gotoTimeout = $state(120000);
 
+	// Link checker config state
+	let linkCheckerExclude = $state<string[]>([]);
+	let linkCheckerConcurrency = $state(10);
+	let linkCheckerTimeout = $state(20);
+
 	$effect(() => {
 		viewports = [...data.settings.viewports];
 		urlPairs = [...(data.settings.urlPairs || [])];
@@ -55,6 +62,11 @@
 		asyncCompareLimit = data.settings.asyncCompareLimit ?? 10;
 		waitTimeout = data.settings.waitTimeout ?? 120000;
 		gotoTimeout = data.settings.gotoTimeout ?? 120000;
+		
+		const lc = data.settings.linkCheckerConfig || {};
+		linkCheckerExclude = lc.exclude || [];
+		linkCheckerConcurrency = lc.maxConcurrency || 10;
+		linkCheckerTimeout = lc.timeout || 20;
 	});
 
 	const iconOptions: { value: ViewportIcon; label: string; icon: typeof MonitorIcon }[] = [
@@ -444,6 +456,58 @@
 				<div class="mt-4 text-xs text-muted-foreground">
 					{viewports.length} viewport{viewports.length === 1 ? '' : 's'} configured
 				</div>
+			</CardContent>
+		</Card>
+
+		<Card>
+			<CardHeader>
+				<CardTitle>Link Checker</CardTitle>
+				<CardDescription>
+					Global configuration for link checking. These settings apply to all projects
+					unless overridden.
+				</CardDescription>
+			</CardHeader>
+			<CardContent class="space-y-4">
+				<div class="space-y-2">
+					<Label for="linkCheckerExclude">Exclude Patterns</Label>
+					<Textarea
+						id="linkCheckerExclude"
+						placeholder="https://example.com/.*"
+						value={linkCheckerExclude.join('\n')}
+						oninput={(e) => linkCheckerExclude = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						class="font-mono text-xs"
+					/>
+					<p class="text-xs text-muted-foreground">
+						URL patterns to skip (one per line). Supports strings or regex patterns.
+					</p>
+				</div>
+				
+				<div class="grid gap-6 md:grid-cols-2">
+					<div class="space-y-2">
+						<Label for="linkCheckerConcurrency">Max Concurrency</Label>
+						<Input
+							id="linkCheckerConcurrency"
+							type="number"
+							min="1"
+							bind:value={linkCheckerConcurrency}
+						/>
+					</div>
+					<div class="space-y-2">
+						<Label for="linkCheckerTimeout">Timeout (seconds)</Label>
+						<Input
+							id="linkCheckerTimeout"
+							type="number"
+							min="1"
+							bind:value={linkCheckerTimeout}
+						/>
+					</div>
+				</div>
+				
+				<input type="hidden" name="linkCheckerConfig" value={JSON.stringify({
+					exclude: linkCheckerExclude,
+					maxConcurrency: linkCheckerConcurrency,
+					timeout: linkCheckerTimeout
+				})} />
 			</CardContent>
 		</Card>
 

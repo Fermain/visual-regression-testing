@@ -26,6 +26,7 @@ export const actions: Actions = {
 		const clickSelector = data.get('clickSelector') as string;
 		const postInteractionWaitStr = data.get('postInteractionWait') as string;
 		const hideSelectorsStr = data.get('hideSelectors') as string;
+		const linkCheckerConfigJson = data.get('linkCheckerConfig') as string;
 
 		if (!name?.trim()) {
 			return fail(400, { error: 'Project name is required' });
@@ -45,6 +46,8 @@ export const actions: Actions = {
 					.filter((s) => s)
 			: undefined;
 
+		const linkCheckerConfig = linkCheckerConfigJson ? JSON.parse(linkCheckerConfigJson) : undefined;
+
 		const newProject = {
 			id: randomUUID(),
 			name: name.trim(),
@@ -52,7 +55,8 @@ export const actions: Actions = {
 			delay: delayStr ? parseInt(delayStr, 10) : undefined,
 			clickSelector: clickSelector?.trim() || undefined,
 			postInteractionWait: postInteractionWaitStr ? parseInt(postInteractionWaitStr, 10) : undefined,
-			hideSelectors: hideSelectors && hideSelectors.length > 0 ? hideSelectors : undefined
+			hideSelectors: hideSelectors && hideSelectors.length > 0 ? hideSelectors : undefined,
+			linkCheckerConfig
 		};
 
 		db.saveProject(newProject);
