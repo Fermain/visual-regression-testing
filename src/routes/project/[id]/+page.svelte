@@ -178,9 +178,18 @@
 	type LinkFilter = 'all' | 'errors' | '404' | 'dropped' | 'added' | 'ok';
 	let linkFilter = $state<LinkFilter>('all');
 
-	// Helper to get comparison key (use normalized URL if available)
+	// Helper to get comparison key - extracts pathname + search, ignoring hostname
+	// This allows comparing links across environments with different hostnames
 	function getLinkKey(link: { url: string; normalizedUrl?: string }) {
-		return link.normalizedUrl || link.url;
+		const urlToUse = link.normalizedUrl || link.url;
+		try {
+			const parsed = new URL(urlToUse);
+			// Return pathname + search (normalized query params already applied)
+			return parsed.pathname + parsed.search;
+		} catch {
+			// If URL parsing fails, return as-is
+			return urlToUse;
+		}
 	}
 
 	// Combined and filtered link data
