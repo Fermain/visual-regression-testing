@@ -37,7 +37,9 @@ export interface LinkCheckerConfig {
 export interface LinkResult {
 	url: string;
 	status: string;
+	statusCode?: number;
 	message?: string;
+	parent?: string;
 }
 
 export interface LinkCheckRunResult {
@@ -53,6 +55,11 @@ export interface LinkCheckPairResult {
 	canonical?: LinkCheckRunResult;
 	candidate?: LinkCheckRunResult;
 	error?: string;
+	progress?: {
+		phase: 'canonical' | 'candidate';
+		checked: number;
+		current?: string;
+	};
 }
 
 export interface Project {

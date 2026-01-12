@@ -138,6 +138,13 @@ function initSchema(database: SqlJsDatabase) {
 	} catch (e) {
 		// Column already exists
 	}
+
+	// Add progress column to lychee_results if it doesn't exist
+	try {
+		database.run('ALTER TABLE lychee_results ADD COLUMN progress TEXT');
+	} catch (e) {
+		// Column already exists
+	}
 }
 
 function migrateFromJson(database: SqlJsDatabase) {
@@ -347,7 +354,8 @@ export function getProjects(): Project[] {
 					lastRun: (lrObj.last_run as string) ?? undefined,
 					canonical: lrObj.canonical_result ? JSON.parse(lrObj.canonical_result as string) : undefined,
 					candidate: lrObj.candidate_result ? JSON.parse(lrObj.candidate_result as string) : undefined,
-					error: (lrObj.error as string) ?? undefined
+					error: (lrObj.error as string) ?? undefined,
+					progress: lrObj.progress ? JSON.parse(lrObj.progress as string) : undefined
 				};
 			}
 		}
@@ -408,7 +416,8 @@ export function getProject(id: string): Project | undefined {
 				lastRun: (lrObj.last_run as string) ?? undefined,
 				canonical: lrObj.canonical_result ? JSON.parse(lrObj.canonical_result as string) : undefined,
 				candidate: lrObj.candidate_result ? JSON.parse(lrObj.candidate_result as string) : undefined,
-				error: (lrObj.error as string) ?? undefined
+				error: (lrObj.error as string) ?? undefined,
+				progress: lrObj.progress ? JSON.parse(lrObj.progress as string) : undefined
 			};
 		}
 	}
@@ -526,6 +535,7 @@ export function updateLinkCheckResult(
 	let canonical: string | null = null;
 	let candidate: string | null = null;
 	let error: string | null = null;
+	let progress: string | null = null;
 
 	if (existing.length > 0 && existing[0].values.length > 0) {
 		const cols = existing[0].columns;
@@ -539,6 +549,7 @@ export function updateLinkCheckResult(
 		canonical = rowObj.canonical_result as string | null;
 		candidate = rowObj.candidate_result as string | null;
 		error = rowObj.error as string | null;
+		progress = rowObj.progress as string | null;
 	}
 
 	status = update.status ?? status;
@@ -546,17 +557,21 @@ export function updateLinkCheckResult(
 	canonical = update.canonical !== undefined ? JSON.stringify(update.canonical) : canonical;
 	candidate = update.candidate !== undefined ? JSON.stringify(update.candidate) : candidate;
 	error = update.error ?? error;
+	progress = update.progress !== undefined 
+		? (update.progress ? JSON.stringify(update.progress) : null) 
+		: progress;
 
 	database.run(
-		`INSERT INTO lychee_results (project_id, pair_id, status, last_run, canonical_result, candidate_result, error)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO lychee_results (project_id, pair_id, status, last_run, canonical_result, candidate_result, error, progress)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(project_id, pair_id) DO UPDATE SET
 			status = excluded.status,
 			last_run = excluded.last_run,
 			canonical_result = excluded.canonical_result,
 			candidate_result = excluded.candidate_result,
-			error = excluded.error`,
-		[projectId, pairId, status, lastRun, canonical, candidate, error]
+			error = excluded.error,
+			progress = excluded.progress`,
+		[projectId, pairId, status, lastRun, canonical, candidate, error, progress]
 	);
 
 	saveDbToFile(database);

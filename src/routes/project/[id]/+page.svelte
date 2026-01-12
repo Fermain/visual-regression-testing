@@ -60,7 +60,8 @@
 	let isBusy = $derived(isRunning || isQueued);
 	let runningCommand = $state<'reference' | 'test' | 'approve' | 'linkcheck' | null>(null);
 	let pollInterval: ReturnType<typeof setInterval>;
-	let progress = $derived(pairResult?.progress);
+	let visualProgress = $derived(pairResult?.progress);
+	let linkProgress = $derived(linkCheckResult?.progress);
 
 	// Report Stats
 	let reportStats = $derived.by(() => {
@@ -172,7 +173,126 @@
 
 		return { dropped, added, brokenCanonical, brokenCandidate };
 	});
+
+	// Link filter state
+	type LinkFilter = 'all' | 'errors' | '404' | 'dropped' | 'added' | 'ok';
+	let linkFilter = $state<LinkFilter>('all');
+
+	// Combined and filtered link data
+	let filteredLinks = $derived.by(() => {
+		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return [];
+
+		const canonicalUrls = new Set(linkCheckResult.canonical.links.map(l => l.url));
+		const candidateUrls = new Set(linkCheckResult.candidate.links.map(l => l.url));
+
+		// Build combined list with comparison info
+		const combined: Array<{
+			url: string;
+			refStatus: string | null;
+			refCode: number | null;
+			testStatus: string | null;
+			testCode: number | null;
+			isDropped: boolean;
+			isAdded: boolean;
+		}> = [];
+
+		// Add all canonical links
+		for (const link of linkCheckResult.canonical.links) {
+			const testLink = linkCheckResult.candidate.links.find(l => l.url === link.url);
+			combined.push({
+				url: link.url,
+				refStatus: link.status,
+				refCode: link.statusCode ?? null,
+				testStatus: testLink?.status ?? null,
+				testCode: testLink?.statusCode ?? null,
+				isDropped: !candidateUrls.has(link.url),
+				isAdded: false
+			});
+		}
+
+		// Add candidate-only links (added)
+		for (const link of linkCheckResult.candidate.links) {
+			if (!canonicalUrls.has(link.url)) {
+				combined.push({
+					url: link.url,
+					refStatus: null,
+					refCode: null,
+					testStatus: link.status,
+					testCode: link.statusCode ?? null,
+					isDropped: false,
+					isAdded: true
+				});
+			}
+		}
+
+		// Apply filter
+		return combined.filter(link => {
+			switch (linkFilter) {
+				case 'errors':
+					return (link.refStatus && link.refStatus !== 'OK') || 
+					       (link.testStatus && link.testStatus !== 'OK');
+				case '404':
+					return link.refCode === 404 || link.testCode === 404;
+				case 'dropped':
+					return link.isDropped;
+				case 'added':
+					return link.isAdded;
+				case 'ok':
+					return link.refStatus === 'OK' && link.testStatus === 'OK';
+				default:
+					return true;
+			}
+		});
+	});
+
+	// Link stats for filter badges
+	let linkStats = $derived.by(() => {
+		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return null;
+
+		const canonicalUrls = new Set(linkCheckResult.canonical.links.map(l => l.url));
+		const candidateUrls = new Set(linkCheckResult.candidate.links.map(l => l.url));
+
+		let errors = 0;
+		let notFound = 0;
+		let dropped = 0;
+		let added = 0;
+		let ok = 0;
+		const total = new Set([...canonicalUrls, ...candidateUrls]).size;
+
+		for (const link of linkCheckResult.canonical.links) {
+			if (link.status !== 'OK') errors++;
+			if (link.statusCode === 404) notFound++;
+			if (!candidateUrls.has(link.url)) dropped++;
+		}
+
+		for (const link of linkCheckResult.candidate.links) {
+			if (link.status !== 'OK') errors++;
+			if (link.statusCode === 404) notFound++;
+			if (!canonicalUrls.has(link.url)) added++;
+			if (link.status === 'OK' && linkCheckResult.canonical.links.find(l => l.url === link.url)?.status === 'OK') {
+				ok++;
+			}
+		}
+
+		return { total, errors, notFound, dropped, added, ok };
+	});
+
+	// Hotkeys for filters
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+		
+		switch (e.key) {
+			case '1': linkFilter = 'all'; break;
+			case '2': linkFilter = 'errors'; break;
+			case '3': linkFilter = '404'; break;
+			case '4': linkFilter = 'dropped'; break;
+			case '5': linkFilter = 'added'; break;
+			case '0': linkFilter = 'ok'; break;
+		}
+	}
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <ConfirmDialog
 	bind:open={referenceDialogOpen}
@@ -373,25 +493,44 @@ This action cannot be undone."
 						Cancel
 					</button>
 				</div>
-			{:else if isRunning}
-				<div class="flex flex-col gap-1 min-w-[180px] ml-2">
+			{:else if pairResult?.status === 'running' && visualProgress}
+				<div class="flex-1 flex flex-col gap-1 max-w-md ml-2">
 					<div class="flex items-center justify-between text-xs text-muted-foreground">
 						<span class="flex items-center">
 							<Loader2Icon class="h-3 w-3 mr-1 animate-spin" />
-							Running...
+							Visual test running...
 						</span>
-						{#if progress && progress.total > 0}
-							<span>{progress.completed}/{progress.total}</span>
+						{#if visualProgress.total > 0}
+							<span>{visualProgress.completed}/{visualProgress.total}</span>
 						{/if}
 					</div>
-					{#if progress && progress.total > 0}
-						<div class="h-1 w-full bg-secondary rounded-full overflow-hidden">
+					{#if visualProgress.total > 0}
+						<div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
 							<div 
 								class="h-full bg-primary transition-all duration-500 ease-out"
-								style="width: {(progress.completed / progress.total) * 100}%"
+								style="width: {(visualProgress.completed / visualProgress.total) * 100}%"
 							></div>
 						</div>
 					{/if}
+				</div>
+			{:else if linkCheckResult?.status === 'running'}
+				<div class="flex-1 flex items-center gap-3 max-w-md ml-2">
+					<Loader2Icon class="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+					<div class="flex-1 min-w-0">
+						<div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
+							<span>
+								Checking links ({linkProgress?.phase === 'canonical' ? 'reference' : 'candidate'})
+							</span>
+							{#if linkProgress?.checked}
+								<span>{linkProgress.checked} checked</span>
+							{/if}
+						</div>
+						{#if linkProgress?.current}
+							<div class="text-[10px] text-muted-foreground/70 truncate" title={linkProgress.current}>
+								{linkProgress.current}
+							</div>
+						{/if}
+					</div>
 				</div>
 			{/if}
 		</div>
@@ -524,168 +663,161 @@ This action cannot be undone."
 			{/if}
 		</Tabs.Content>
 
-		<Tabs.Content value="links" class="flex-1 overflow-auto p-6 m-0 outline-hidden bg-muted/5">
-			{#if linkCheckResult}
-				<div class="max-w-6xl mx-auto space-y-6">
-					{#if linkComparison}
-						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-							<Card.Root>
-								<Card.Header class="pb-2">
-									<Card.Title class="text-sm font-medium text-muted-foreground">Total Links</Card.Title>
-								</Card.Header>
-								<Card.Content>
-									<div class="flex items-baseline gap-2">
-										<div class="text-2xl font-bold">{linkCheckResult.candidate?.total || 0}</div>
-										<div class="text-xs text-muted-foreground">
-											(Ref: {linkCheckResult.canonical?.total || 0})
-										</div>
-									</div>
-								</Card.Content>
-							</Card.Root>
-							<Card.Root>
-								<Card.Header class="pb-2">
-									<Card.Title class="text-sm font-medium text-muted-foreground">Broken Links</Card.Title>
-								</Card.Header>
-								<Card.Content>
-									<div class="flex items-baseline gap-2">
-										<div class="text-2xl font-bold {linkCheckResult.candidate?.failed ? 'text-destructive' : 'text-green-600'}">
-											{linkCheckResult.candidate?.failed || 0}
-										</div>
-										<div class="text-xs text-muted-foreground">
-											(Ref: {linkCheckResult.canonical?.failed || 0})
-										</div>
-									</div>
-								</Card.Content>
-							</Card.Root>
-							<Card.Root>
-								<Card.Header class="pb-2">
-									<Card.Title class="text-sm font-medium text-muted-foreground">Dropped Links</Card.Title>
-								</Card.Header>
-								<Card.Content>
-									<div class="text-2xl font-bold {linkComparison.dropped.length > 0 ? 'text-amber-600' : 'text-green-600'}">
-										{linkComparison.dropped.length}
-									</div>
-								</Card.Content>
-							</Card.Root>
-						</div>
+		<Tabs.Content value="links" class="flex-1 flex flex-col overflow-hidden m-0 outline-hidden">
+			{#if linkCheckResult?.canonical && linkCheckResult?.candidate && linkStats}
+				<!-- Filter Bar -->
+				<div class="flex items-center gap-2 px-4 py-2 border-b bg-muted/10 shrink-0">
+					<span class="text-xs text-muted-foreground mr-2">Filter:</span>
+					<button
+						onclick={() => linkFilter = 'all'}
+						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}"
+					>
+						All <span class="opacity-60">({linkStats.total})</span>
+						<kbd class="ml-1 text-[10px] opacity-50">1</kbd>
+					</button>
+					<button
+						onclick={() => linkFilter = 'errors'}
+						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'errors' ? 'bg-destructive text-destructive-foreground' : 'bg-muted hover:bg-muted/80'} {linkStats.errors > 0 ? 'text-destructive' : ''}"
+					>
+						Errors <span class="opacity-60">({linkStats.errors})</span>
+						<kbd class="ml-1 text-[10px] opacity-50">2</kbd>
+					</button>
+					<button
+						onclick={() => linkFilter = '404'}
+						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === '404' ? 'bg-destructive text-destructive-foreground' : 'bg-muted hover:bg-muted/80'} {linkStats.notFound > 0 ? 'text-destructive' : ''}"
+					>
+						404 <span class="opacity-60">({linkStats.notFound})</span>
+						<kbd class="ml-1 text-[10px] opacity-50">3</kbd>
+					</button>
+					<button
+						onclick={() => linkFilter = 'dropped'}
+						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'dropped' ? 'bg-amber-500 text-white' : 'bg-muted hover:bg-muted/80'} {linkStats.dropped > 0 ? 'text-amber-600' : ''}"
+					>
+						Dropped <span class="opacity-60">({linkStats.dropped})</span>
+						<kbd class="ml-1 text-[10px] opacity-50">4</kbd>
+					</button>
+					<button
+						onclick={() => linkFilter = 'added'}
+						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'added' ? 'bg-blue-500 text-white' : 'bg-muted hover:bg-muted/80'}"
+					>
+						Added <span class="opacity-60">({linkStats.added})</span>
+						<kbd class="ml-1 text-[10px] opacity-50">5</kbd>
+					</button>
+					<button
+						onclick={() => linkFilter = 'ok'}
+						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'ok' ? 'bg-green-500 text-white' : 'bg-muted hover:bg-muted/80'}"
+					>
+						OK <span class="opacity-60">({linkStats.ok})</span>
+						<kbd class="ml-1 text-[10px] opacity-50">0</kbd>
+					</button>
+					
+					<span class="ml-auto text-xs text-muted-foreground">
+						{filteredLinks.length} link{filteredLinks.length === 1 ? '' : 's'}
+					</span>
+				</div>
 
-						{#if linkComparison.dropped.length > 0}
-							<Card.Root class="border-amber-500/30 bg-amber-500/5">
-								<Card.Header>
-									<Card.Title class="text-amber-700 flex items-center gap-2">
-										<AlertCircleIcon class="h-5 w-5" />
-										Dropped Links
-									</Card.Title>
-									<Card.Description>
-										These links exist on the reference site but were not found on the candidate site.
-									</Card.Description>
-								</Card.Header>
-								<Card.Content>
-									<ul class="space-y-1 font-mono text-xs">
-										{#each linkComparison.dropped as link}
-											<li class="flex items-center gap-2">
-												<Badge variant="outline" class="text-amber-700 border-amber-500/30">Dropped</Badge>
-												<a href={link} target="_blank" class="hover:underline truncate">{link}</a>
-											</li>
-										{/each}
-									</ul>
-								</Card.Content>
-							</Card.Root>
-						{/if}
-
-						<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-							<!-- Broken Links Table -->
-							<Card.Root>
-								<Card.Header>
-									<Card.Title class="text-sm">Candidate Site Results</Card.Title>
-								</Card.Header>
-								<Card.Content>
-									<Table.Root>
-										<Table.Header>
-											<Table.Row>
-												<Table.Head>URL</Table.Head>
-												<Table.Head class="w-24 text-right">Status</Table.Head>
-											</Table.Row>
-										</Table.Header>
-										<Table.Body>
-											{#each linkCheckResult.candidate?.links || [] as link}
-												{@const isOk = link.status === 'Ok' || link.status === 'OK'}
-												<Table.Row class={!isOk ? "bg-destructive/5" : ""}>
-													<Table.Cell class="font-mono text-xs truncate max-w-[300px]" title={link.url}>
-														{link.url}
-													</Table.Cell>
-													<Table.Cell class="text-right">
-														{#if isOk}
-															<Badge variant="outline" class="text-green-600 border-green-600/30 text-[10px] py-0">OK</Badge>
-														{:else}
-															<Badge variant="destructive" class="text-[10px] py-0" title={link.message}>{link.status}</Badge>
-														{/if}
-													</Table.Cell>
-												</Table.Row>
-											{/each}
-										</Table.Body>
-									</Table.Root>
-								</Card.Content>
-							</Card.Root>
-
-							<Card.Root>
-								<Card.Header>
-									<Card.Title class="text-sm">Reference Site Results</Card.Title>
-								</Card.Header>
-								<Card.Content>
-									<Table.Root>
-										<Table.Header>
-											<Table.Row>
-												<Table.Head>URL</Table.Head>
-												<Table.Head class="w-24 text-right">Status</Table.Head>
-											</Table.Row>
-										</Table.Header>
-										<Table.Body>
-											{#each linkCheckResult.canonical?.links || [] as link}
-												{@const isOk = link.status === 'Ok' || link.status === 'OK'}
-												<Table.Row class={!isOk ? "bg-destructive/5" : ""}>
-													<Table.Cell class="font-mono text-xs truncate max-w-[300px]" title={link.url}>
-														{link.url}
-													</Table.Cell>
-													<Table.Cell class="text-right">
-														{#if isOk}
-															<Badge variant="outline" class="text-green-600 border-green-600/30 text-[10px] py-0">OK</Badge>
-														{:else}
-															<Badge variant="destructive" class="text-[10px] py-0" title={link.message}>{link.status}</Badge>
-														{/if}
-													</Table.Cell>
-												</Table.Row>
-											{/each}
-										</Table.Body>
-									</Table.Root>
-								</Card.Content>
-							</Card.Root>
-						</div>
-					{:else if linkCheckResult.status === 'running'}
-						<div class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-							<Loader2Icon class="h-12 w-12 animate-spin mb-4 opacity-20" />
-							<p class="text-lg font-medium">Link Checker is running...</p>
-							<p class="text-sm">Scanning both canonical and candidate sites for links.</p>
-						</div>
-					{:else if linkCheckResult.status === 'queued'}
-						<div class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-							<Loader2Icon class="h-12 w-12 animate-pulse mb-4 opacity-20" />
-							<p class="text-lg font-medium">Link Checker is queued</p>
-							<p class="text-sm">Waiting for other jobs to finish.</p>
-						</div>
-					{:else if linkCheckResult.error}
-						<div class="flex flex-col items-center justify-center py-20 text-destructive">
-							<AlertCircleIcon class="h-12 w-12 mb-4 opacity-20" />
-							<p class="text-lg font-medium">Link Checker failed</p>
-							<p class="text-sm">{linkCheckResult.error}</p>
-							<Button variant="outline" class="mt-6" onclick={() => handleButtonClick('linkcheck')}>
-								Try Again
-							</Button>
-						</div>
+				<!-- Data Table -->
+				<div class="flex-1 overflow-auto">
+					<Table.Root>
+						<Table.Header class="sticky top-0 bg-background z-10">
+							<Table.Row>
+								<Table.Head class="w-[50%]">URL</Table.Head>
+								<Table.Head class="w-24 text-center">Reference</Table.Head>
+								<Table.Head class="w-24 text-center">Test</Table.Head>
+								<Table.Head class="w-24 text-center">Status</Table.Head>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
+							{#each filteredLinks as link}
+								{@const hasIssue = link.isDropped || link.isAdded || 
+									(link.refStatus && link.refStatus !== 'OK') || 
+									(link.testStatus && link.testStatus !== 'OK')}
+								<Table.Row class={
+									link.isDropped ? "bg-amber-500/10" : 
+									link.isAdded ? "bg-blue-500/10" :
+									hasIssue ? "bg-destructive/5" : ""
+								}>
+									<Table.Cell class="font-mono text-xs py-2">
+										<a href={link.url} target="_blank" class="hover:underline truncate block max-w-full" title={link.url}>
+											{link.url}
+										</a>
+									</Table.Cell>
+									<Table.Cell class="text-center py-2">
+										{#if link.refStatus === null}
+											<span class="text-muted-foreground text-xs">—</span>
+										{:else if link.refStatus === 'OK'}
+											<Badge variant="outline" class="text-green-600 border-green-600/30 text-[10px] py-0">
+												{link.refCode || 'OK'}
+											</Badge>
+										{:else}
+											<Badge variant="destructive" class="text-[10px] py-0">
+												{link.refCode || link.refStatus}
+											</Badge>
+										{/if}
+									</Table.Cell>
+									<Table.Cell class="text-center py-2">
+										{#if link.testStatus === null}
+											<span class="text-muted-foreground text-xs">—</span>
+										{:else if link.testStatus === 'OK'}
+											<Badge variant="outline" class="text-green-600 border-green-600/30 text-[10px] py-0">
+												{link.testCode || 'OK'}
+											</Badge>
+										{:else}
+											<Badge variant="destructive" class="text-[10px] py-0">
+												{link.testCode || link.testStatus}
+											</Badge>
+										{/if}
+									</Table.Cell>
+									<Table.Cell class="text-center py-2">
+										{#if link.isDropped}
+											<Badge variant="outline" class="text-amber-600 border-amber-500/30 text-[10px] py-0">Dropped</Badge>
+										{:else if link.isAdded}
+											<Badge variant="outline" class="text-blue-600 border-blue-500/30 text-[10px] py-0">Added</Badge>
+										{:else if link.refStatus === 'OK' && link.testStatus === 'OK'}
+											<CheckCircleIcon class="h-4 w-4 text-green-600 mx-auto" />
+										{:else}
+											<AlertCircleIcon class="h-4 w-4 text-destructive mx-auto" />
+										{/if}
+									</Table.Cell>
+								</Table.Row>
+							{:else}
+								<Table.Row>
+									<Table.Cell colspan={4} class="text-center py-8 text-muted-foreground">
+										No links match the current filter
+									</Table.Cell>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
+				</div>
+			{:else if linkCheckResult?.status === 'running'}
+				<div class="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+					<Loader2Icon class="h-12 w-12 animate-spin mb-4 opacity-20" />
+					<p class="text-lg font-medium">Link Checker is running...</p>
+					{#if linkProgress}
+						<p class="text-sm mt-2">
+							Checking {linkProgress.phase === 'canonical' ? 'reference' : 'test'} site 
+							({linkProgress.checked} links checked)
+						</p>
 					{/if}
 				</div>
+			{:else if linkCheckResult?.status === 'queued'}
+				<div class="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+					<Loader2Icon class="h-12 w-12 animate-pulse mb-4 opacity-20" />
+					<p class="text-lg font-medium">Link Checker is queued</p>
+					<p class="text-sm">Waiting for other jobs to finish.</p>
+				</div>
+			{:else if linkCheckResult?.error}
+				<div class="flex-1 flex flex-col items-center justify-center text-destructive">
+					<AlertCircleIcon class="h-12 w-12 mb-4 opacity-20" />
+					<p class="text-lg font-medium">Link Checker failed</p>
+					<p class="text-sm">{linkCheckResult.error}</p>
+					<Button variant="outline" class="mt-6" onclick={() => handleButtonClick('linkcheck')}>
+						Try Again
+					</Button>
+				</div>
 			{:else}
-				<div class="flex flex-col items-center justify-center py-20 text-muted-foreground text-center">
+				<div class="flex-1 flex flex-col items-center justify-center text-muted-foreground text-center p-8">
 					<div class="rounded-full bg-muted p-6 mb-4">
 						<LinkIcon class="h-12 w-12 opacity-20" />
 					</div>
