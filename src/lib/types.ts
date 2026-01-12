@@ -32,10 +32,12 @@ export interface LinkCheckerConfig {
 	exclude?: string[];
 	maxConcurrency?: number;
 	timeout?: number;
+	ignoreQueryParams?: string[];
 }
 
 export interface LinkResult {
 	url: string;
+	normalizedUrl?: string;
 	status: string;
 	statusCode?: number;
 	message?: string;
@@ -59,7 +61,7 @@ export interface LinkCheckPairResult {
 		phase: 'canonical' | 'candidate';
 		checked: number;
 		current?: string;
-	};
+	} | null;
 }
 
 export interface Project {

@@ -201,7 +201,8 @@ async function processQueue(): Promise<void> {
 				updateLinkCheckResult(job.projectId, job.pairId, {
 					status: 'idle',
 					lastRun: job.completedAt,
-					error: result.error
+					error: result.error,
+					progress: null
 				});
 			} else {
 				updatePairResult(job.projectId, job.pairId, {
@@ -232,26 +233,27 @@ async function processQueue(): Promise<void> {
 				error: job.error
 			});
 
-			try {
-				if (job.command === 'linkcheck') {
-					updateLinkCheckResult(job.projectId, job.pairId, {
-						status: 'idle',
-						lastRun: job.completedAt,
+		try {
+			if (job.command === 'linkcheck') {
+				updateLinkCheckResult(job.projectId, job.pairId, {
+					status: 'idle',
+					lastRun: job.completedAt,
+					error: job.error,
+					progress: null
+				});
+			} else {
+				updatePairResult(job.projectId, job.pairId, {
+					status: 'idle',
+					lastRun: job.completedAt,
+					lastResult: {
+						success: false,
+						command: job.command,
 						error: job.error
-					});
-				} else {
-					updatePairResult(job.projectId, job.pairId, {
-						status: 'idle',
-						lastRun: job.completedAt,
-						lastResult: {
-							success: false,
-							command: job.command,
-							error: job.error
-						},
-						progress: null
-					});
-				}
-			} catch {}
+					},
+					progress: null
+				});
+			}
+		} catch {}
 		}
 
 		// Clean up old completed jobs (keep last 50)

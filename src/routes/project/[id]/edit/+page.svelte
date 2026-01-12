@@ -39,6 +39,7 @@
 	let linkCheckerExclude = $state<string[]>(data.project.linkCheckerConfig?.exclude || []);
 	let linkCheckerConcurrency = $state(data.project.linkCheckerConfig?.maxConcurrency || 10);
 	let linkCheckerTimeout = $state(data.project.linkCheckerConfig?.timeout || 20);
+	let linkCheckerIgnoreParams = $state<string[]>(data.project.linkCheckerConfig?.ignoreQueryParams || []);
 
 	let deleteDialogOpen = $state(false);
 	let deleteFormEl = $state<HTMLFormElement | null>(null);
@@ -324,11 +325,27 @@ This action cannot be undone."
 						/>
 					</div>
 				</div>
+
+				<div class="space-y-2">
+					<Label for="linkCheckerIgnoreParams">Ignore Query Parameters</Label>
+					<Textarea
+						id="linkCheckerIgnoreParams"
+						placeholder="ver&#10;v&#10;_"
+						value={linkCheckerIgnoreParams.join('\n')}
+						oninput={(e) => linkCheckerIgnoreParams = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						class="font-mono text-xs"
+						rows={3}
+					/>
+					<p class="text-xs text-muted-foreground">
+						Query parameters to ignore when comparing URLs (one per line).
+					</p>
+				</div>
 				
 				<input type="hidden" name="linkCheckerConfig" value={JSON.stringify({
 					exclude: linkCheckerExclude,
 					maxConcurrency: linkCheckerConcurrency,
-					timeout: linkCheckerTimeout
+					timeout: linkCheckerTimeout,
+					ignoreQueryParams: linkCheckerIgnoreParams
 				})} />
 			</CardContent>
 		</Card>

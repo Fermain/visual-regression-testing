@@ -34,6 +34,7 @@ async function initDb(): Promise<SqlJsDatabase> {
 
 		initSchema(database);
 		migrateFromJson(database);
+		resetStaleStates(database);
 		saveDbToFile(database);
 
 		db = database;
@@ -144,6 +145,29 @@ function initSchema(database: SqlJsDatabase) {
 		database.run('ALTER TABLE lychee_results ADD COLUMN progress TEXT');
 	} catch (e) {
 		// Column already exists
+	}
+}
+
+/**
+ * Reset any stale running/queued states on startup.
+ * This handles cases where the app was shut down mid-run.
+ */
+function resetStaleStates(database: SqlJsDatabase) {
+	const pairReset = database.exec(
+		"SELECT COUNT(*) FROM pair_results WHERE status IN ('running', 'queued')"
+	);
+	const linkReset = database.exec(
+		"SELECT COUNT(*) FROM lychee_results WHERE status IN ('running', 'queued')"
+	);
+
+	const pairCount = (pairReset[0]?.values[0]?.[0] as number) || 0;
+	const linkCount = (linkReset[0]?.values[0]?.[0] as number) || 0;
+
+	if (pairCount > 0 || linkCount > 0) {
+		console.log(`[DB] Resetting ${pairCount} visual test(s) and ${linkCount} link check(s) stuck in running/queued state`);
+
+		database.run("UPDATE pair_results SET status = 'idle', progress = NULL WHERE status IN ('running', 'queued')");
+		database.run("UPDATE lychee_results SET status = 'idle', progress = NULL WHERE status IN ('running', 'queued')");
 	}
 }
 
@@ -557,7 +581,8 @@ export function updateLinkCheckResult(
 	canonical = update.canonical !== undefined ? JSON.stringify(update.canonical) : canonical;
 	candidate = update.candidate !== undefined ? JSON.stringify(update.candidate) : candidate;
 	error = update.error ?? error;
-	progress = update.progress !== undefined 
+	// Use 'progress' in update to check if the key was explicitly provided
+	progress = 'progress' in update
 		? (update.progress ? JSON.stringify(update.progress) : null) 
 		: progress;
 

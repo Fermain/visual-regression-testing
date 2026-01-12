@@ -37,6 +37,7 @@
 	let linkCheckerExclude = $state<string[]>([]);
 	let linkCheckerConcurrency = $state(10);
 	let linkCheckerTimeout = $state(20);
+	let linkCheckerIgnoreParams = $state<string[]>([]);
 
 	let pathsList = $derived(
 		pathsText
@@ -306,11 +307,27 @@
 						/>
 					</div>
 				</div>
+
+				<div class="space-y-2">
+					<Label for="linkCheckerIgnoreParams">Ignore Query Parameters</Label>
+					<Textarea
+						id="linkCheckerIgnoreParams"
+						placeholder="ver&#10;v&#10;_"
+						value={linkCheckerIgnoreParams.join('\n')}
+						oninput={(e) => linkCheckerIgnoreParams = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						class="font-mono text-xs"
+						rows={3}
+					/>
+					<p class="text-xs text-muted-foreground">
+						Query parameters to ignore when comparing URLs (one per line).
+					</p>
+				</div>
 				
 				<input type="hidden" name="linkCheckerConfig" value={JSON.stringify({
 					exclude: linkCheckerExclude,
 					maxConcurrency: linkCheckerConcurrency,
-					timeout: linkCheckerTimeout
+					timeout: linkCheckerTimeout,
+					ignoreQueryParams: linkCheckerIgnoreParams
 				})} />
 			</CardContent>
 		</Card>

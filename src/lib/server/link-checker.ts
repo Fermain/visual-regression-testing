@@ -1,6 +1,26 @@
 import { LinkChecker, LinkState, type LinkResult as LinkinatorResult } from 'linkinator';
-import type { Project, UrlPair, LinkCheckRunResult, LinkResult } from '$lib/types';
+import type { Project, UrlPair, LinkCheckRunResult, LinkResult, LinkCheckerConfig } from '$lib/types';
 import { updateLinkCheckResult, getSettings } from './db';
+
+const DEFAULT_IGNORED_PARAMS = ['ver', 'v', '_', 't', 'timestamp', 'cache', 'cb', 'nocache'];
+
+function normalizeUrl(url: string, ignoreParams: string[]): string {
+	try {
+		const parsed = new URL(url);
+		const paramsToRemove = [...DEFAULT_IGNORED_PARAMS, ...ignoreParams];
+		
+		for (const param of paramsToRemove) {
+			parsed.searchParams.delete(param);
+		}
+		
+		// Sort remaining params for consistent comparison
+		parsed.searchParams.sort();
+		
+		return parsed.toString();
+	} catch {
+		return url;
+	}
+}
 
 export async function runLinkCheck(
 	project: Project,
@@ -46,7 +66,7 @@ export async function runLinkCheck(
 			status: 'idle',
 			canonical: canonicalResult,
 			candidate: candidateResult,
-			progress: undefined
+			progress: null
 		});
 
 		return { success: true };
@@ -55,7 +75,7 @@ export async function runLinkCheck(
 		updateLinkCheckResult(project.id, urlPair.id, {
 			status: 'idle',
 			error: errorMessage,
-			progress: undefined
+			progress: null
 		});
 		return { success: false, error: errorMessage };
 	}
@@ -75,6 +95,7 @@ async function executeCheck(
 		}
 	});
 
+	const ignoreParams = config.ignoreQueryParams ?? [];
 	const checker = new LinkChecker();
 	const allLinks: LinkResult[] = [];
 	let checkedCount = 0;
@@ -84,6 +105,7 @@ async function executeCheck(
 		
 		const link: LinkResult = {
 			url: result.url,
+			normalizedUrl: normalizeUrl(result.url, ignoreParams),
 			status: result.state === LinkState.OK ? 'OK' : result.state === LinkState.SKIPPED ? 'Skipped' : 'Error',
 			statusCode: result.status,
 			parent: result.parent

@@ -54,6 +54,7 @@
 	let linkCheckerExclude = $state<string[]>([]);
 	let linkCheckerConcurrency = $state(10);
 	let linkCheckerTimeout = $state(20);
+	let linkCheckerIgnoreParams = $state<string[]>([]);
 
 	$effect(() => {
 		viewports = [...data.settings.viewports];
@@ -67,6 +68,7 @@
 		linkCheckerExclude = lc.exclude || [];
 		linkCheckerConcurrency = lc.maxConcurrency || 10;
 		linkCheckerTimeout = lc.timeout || 20;
+		linkCheckerIgnoreParams = lc.ignoreQueryParams || [];
 	});
 
 	const iconOptions: { value: ViewportIcon; label: string; icon: typeof MonitorIcon }[] = [
@@ -502,11 +504,28 @@
 						/>
 					</div>
 				</div>
+
+				<div class="space-y-2">
+					<Label for="linkCheckerIgnoreParams">Ignore Query Parameters</Label>
+					<Textarea
+						id="linkCheckerIgnoreParams"
+						placeholder="ver&#10;v&#10;_"
+						value={linkCheckerIgnoreParams.join('\n')}
+						oninput={(e) => linkCheckerIgnoreParams = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						class="font-mono text-xs"
+						rows={3}
+					/>
+					<p class="text-xs text-muted-foreground">
+						Query parameters to ignore when comparing URLs (one per line). 
+						Default ignored: ver, v, _, t, timestamp, cache, cb, nocache
+					</p>
+				</div>
 				
 				<input type="hidden" name="linkCheckerConfig" value={JSON.stringify({
 					exclude: linkCheckerExclude,
 					maxConcurrency: linkCheckerConcurrency,
-					timeout: linkCheckerTimeout
+					timeout: linkCheckerTimeout,
+					ignoreQueryParams: linkCheckerIgnoreParams
 				})} />
 			</CardContent>
 		</Card>

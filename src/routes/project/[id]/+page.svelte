@@ -178,12 +178,18 @@
 	type LinkFilter = 'all' | 'errors' | '404' | 'dropped' | 'added' | 'ok';
 	let linkFilter = $state<LinkFilter>('all');
 
+	// Helper to get comparison key (use normalized URL if available)
+	function getLinkKey(link: { url: string; normalizedUrl?: string }) {
+		return link.normalizedUrl || link.url;
+	}
+
 	// Combined and filtered link data
 	let filteredLinks = $derived.by(() => {
 		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return [];
 
-		const canonicalUrls = new Set(linkCheckResult.canonical.links.map(l => l.url));
-		const candidateUrls = new Set(linkCheckResult.candidate.links.map(l => l.url));
+		// Use normalized URLs for comparison
+		const canonicalByKey = new Map(linkCheckResult.canonical.links.map(l => [getLinkKey(l), l]));
+		const candidateByKey = new Map(linkCheckResult.candidate.links.map(l => [getLinkKey(l), l]));
 
 		// Build combined list with comparison info
 		const combined: Array<{
@@ -198,21 +204,23 @@
 
 		// Add all canonical links
 		for (const link of linkCheckResult.canonical.links) {
-			const testLink = linkCheckResult.candidate.links.find(l => l.url === link.url);
+			const key = getLinkKey(link);
+			const testLink = candidateByKey.get(key);
 			combined.push({
 				url: link.url,
 				refStatus: link.status,
 				refCode: link.statusCode ?? null,
 				testStatus: testLink?.status ?? null,
 				testCode: testLink?.statusCode ?? null,
-				isDropped: !candidateUrls.has(link.url),
+				isDropped: !candidateByKey.has(key),
 				isAdded: false
 			});
 		}
 
 		// Add candidate-only links (added)
 		for (const link of linkCheckResult.candidate.links) {
-			if (!canonicalUrls.has(link.url)) {
+			const key = getLinkKey(link);
+			if (!canonicalByKey.has(key)) {
 				combined.push({
 					url: link.url,
 					refStatus: null,
@@ -249,27 +257,32 @@
 	let linkStats = $derived.by(() => {
 		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return null;
 
-		const canonicalUrls = new Set(linkCheckResult.canonical.links.map(l => l.url));
-		const candidateUrls = new Set(linkCheckResult.candidate.links.map(l => l.url));
+		// Use normalized URLs for comparison
+		const canonicalByKey = new Map(linkCheckResult.canonical.links.map(l => [getLinkKey(l), l]));
+		const candidateByKey = new Map(linkCheckResult.candidate.links.map(l => [getLinkKey(l), l]));
+		const allKeys = new Set([...canonicalByKey.keys(), ...candidateByKey.keys()]);
 
 		let errors = 0;
 		let notFound = 0;
 		let dropped = 0;
 		let added = 0;
 		let ok = 0;
-		const total = new Set([...canonicalUrls, ...candidateUrls]).size;
+		const total = allKeys.size;
 
 		for (const link of linkCheckResult.canonical.links) {
+			const key = getLinkKey(link);
 			if (link.status !== 'OK') errors++;
 			if (link.statusCode === 404) notFound++;
-			if (!candidateUrls.has(link.url)) dropped++;
+			if (!candidateByKey.has(key)) dropped++;
 		}
 
 		for (const link of linkCheckResult.candidate.links) {
+			const key = getLinkKey(link);
 			if (link.status !== 'OK') errors++;
 			if (link.statusCode === 404) notFound++;
-			if (!canonicalUrls.has(link.url)) added++;
-			if (link.status === 'OK' && linkCheckResult.canonical.links.find(l => l.url === link.url)?.status === 'OK') {
+			if (!canonicalByKey.has(key)) added++;
+			const refLink = canonicalByKey.get(key);
+			if (link.status === 'OK' && refLink?.status === 'OK') {
 				ok++;
 			}
 		}
@@ -666,52 +679,84 @@ This action cannot be undone."
 		<Tabs.Content value="links" class="flex-1 flex flex-col overflow-hidden m-0 outline-hidden">
 			{#if linkCheckResult?.canonical && linkCheckResult?.candidate && linkStats}
 				<!-- Filter Bar -->
-				<div class="flex items-center gap-2 px-4 py-2 border-b bg-muted/10 shrink-0">
-					<span class="text-xs text-muted-foreground mr-2">Filter:</span>
+				<div class="flex items-center gap-1.5 px-4 py-2.5 border-b bg-muted/30 shrink-0">
+					<span class="text-xs font-medium text-muted-foreground mr-2">Filter:</span>
 					<button
 						onclick={() => linkFilter = 'all'}
-						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}"
+						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
+							{linkFilter === 'all' 
+								? 'bg-foreground text-background' 
+								: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
-						All <span class="opacity-60">({linkStats.total})</span>
-						<kbd class="ml-1 text-[10px] opacity-50">1</kbd>
+						All
+						<span class="tabular-nums">{linkStats.total}</span>
+						<kbd class="ml-0.5 px-1 rounded bg-muted/50 text-[10px] font-mono">1</kbd>
 					</button>
 					<button
 						onclick={() => linkFilter = 'errors'}
-						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'errors' ? 'bg-destructive text-destructive-foreground' : 'bg-muted hover:bg-muted/80'} {linkStats.errors > 0 ? 'text-destructive' : ''}"
+						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
+							{linkFilter === 'errors' 
+								? 'bg-red-600 text-white' 
+								: linkStats.errors > 0 
+									? 'bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900'
+									: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
-						Errors <span class="opacity-60">({linkStats.errors})</span>
-						<kbd class="ml-1 text-[10px] opacity-50">2</kbd>
+						Errors
+						<span class="tabular-nums">{linkStats.errors}</span>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">2</kbd>
 					</button>
 					<button
 						onclick={() => linkFilter = '404'}
-						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === '404' ? 'bg-destructive text-destructive-foreground' : 'bg-muted hover:bg-muted/80'} {linkStats.notFound > 0 ? 'text-destructive' : ''}"
+						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
+							{linkFilter === '404' 
+								? 'bg-red-600 text-white' 
+								: linkStats.notFound > 0 
+									? 'bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900'
+									: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
-						404 <span class="opacity-60">({linkStats.notFound})</span>
-						<kbd class="ml-1 text-[10px] opacity-50">3</kbd>
+						404
+						<span class="tabular-nums">{linkStats.notFound}</span>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">3</kbd>
 					</button>
 					<button
 						onclick={() => linkFilter = 'dropped'}
-						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'dropped' ? 'bg-amber-500 text-white' : 'bg-muted hover:bg-muted/80'} {linkStats.dropped > 0 ? 'text-amber-600' : ''}"
+						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
+							{linkFilter === 'dropped' 
+								? 'bg-amber-500 text-white' 
+								: linkStats.dropped > 0 
+									? 'bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900'
+									: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
-						Dropped <span class="opacity-60">({linkStats.dropped})</span>
-						<kbd class="ml-1 text-[10px] opacity-50">4</kbd>
+						Dropped
+						<span class="tabular-nums">{linkStats.dropped}</span>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">4</kbd>
 					</button>
 					<button
 						onclick={() => linkFilter = 'added'}
-						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'added' ? 'bg-blue-500 text-white' : 'bg-muted hover:bg-muted/80'}"
+						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
+							{linkFilter === 'added' 
+								? 'bg-blue-500 text-white' 
+								: linkStats.added > 0 
+									? 'bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900'
+									: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
-						Added <span class="opacity-60">({linkStats.added})</span>
-						<kbd class="ml-1 text-[10px] opacity-50">5</kbd>
+						Added
+						<span class="tabular-nums">{linkStats.added}</span>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">5</kbd>
 					</button>
 					<button
 						onclick={() => linkFilter = 'ok'}
-						class="px-2 py-1 text-xs rounded-md transition-colors {linkFilter === 'ok' ? 'bg-green-500 text-white' : 'bg-muted hover:bg-muted/80'}"
+						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
+							{linkFilter === 'ok' 
+								? 'bg-green-600 text-white' 
+								: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
-						OK <span class="opacity-60">({linkStats.ok})</span>
-						<kbd class="ml-1 text-[10px] opacity-50">0</kbd>
+						OK
+						<span class="tabular-nums">{linkStats.ok}</span>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">0</kbd>
 					</button>
 					
-					<span class="ml-auto text-xs text-muted-foreground">
+					<span class="ml-auto text-xs text-muted-foreground font-medium tabular-nums">
 						{filteredLinks.length} link{filteredLinks.length === 1 ? '' : 's'}
 					</span>
 				</div>
