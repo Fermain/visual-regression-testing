@@ -52,4 +52,3 @@
 		<CheckIcon class="h-3 w-3" />
 	{/if}
 </label>
-

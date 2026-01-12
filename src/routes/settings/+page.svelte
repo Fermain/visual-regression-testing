@@ -18,7 +18,13 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
+	import {
+		Card,
+		CardContent,
+		CardHeader,
+		CardTitle,
+		CardDescription
+	} from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import {
 		Table,
@@ -63,7 +69,7 @@
 		asyncCompareLimit = data.settings.asyncCompareLimit ?? 10;
 		waitTimeout = data.settings.waitTimeout ?? 120000;
 		gotoTimeout = data.settings.gotoTimeout ?? 120000;
-		
+
 		const lc = data.settings.linkCheckerConfig || {};
 		linkCheckerExclude = lc.exclude || [];
 		linkCheckerConcurrency = lc.maxConcurrency || 10;
@@ -149,9 +155,9 @@
 	let candidateValid = $derived(newPairCandidate.trim() === '' || isValidUrl(newPairCandidate));
 	let canAddPair = $derived(
 		newPairCanonical.trim() !== '' &&
-		newPairCandidate.trim() !== '' &&
-		isValidUrl(newPairCanonical) &&
-		isValidUrl(newPairCandidate)
+			newPairCandidate.trim() !== '' &&
+			isValidUrl(newPairCanonical) &&
+			isValidUrl(newPairCandidate)
 	);
 
 	function addUrlPair() {
@@ -262,7 +268,9 @@
 										type="url"
 										placeholder="https://www.example.com"
 										bind:value={newPairCanonical}
-										class="h-8 bg-background font-mono text-xs {!canonicalValid ? 'border-destructive focus-visible:ring-destructive' : ''}"
+										class="h-8 bg-background font-mono text-xs {!canonicalValid
+											? 'border-destructive focus-visible:ring-destructive'
+											: ''}"
 										oninput={clearPairError}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') {
@@ -280,7 +288,9 @@
 										type="url"
 										placeholder="https://staging.example.com"
 										bind:value={newPairCandidate}
-										class="h-8 bg-background font-mono text-xs {!candidateValid ? 'border-destructive focus-visible:ring-destructive' : ''}"
+										class="h-8 bg-background font-mono text-xs {!candidateValid
+											? 'border-destructive focus-visible:ring-destructive'
+											: ''}"
 										oninput={clearPairError}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') {
@@ -317,7 +327,7 @@
 				</div>
 			</CardContent>
 		</Card>
-		
+
 		<Card>
 			<CardHeader>
 				<CardTitle>Viewports</CardTitle>
@@ -465,8 +475,8 @@
 			<CardHeader>
 				<CardTitle>Link Checker</CardTitle>
 				<CardDescription>
-					Global configuration for link checking. These settings apply to all projects
-					unless overridden.
+					Global configuration for link checking. These settings apply to all projects unless
+					overridden.
 				</CardDescription>
 			</CardHeader>
 			<CardContent class="space-y-4">
@@ -476,14 +486,17 @@
 						id="linkCheckerExclude"
 						placeholder="https://example.com/.*"
 						value={linkCheckerExclude.join('\n')}
-						oninput={(e) => linkCheckerExclude = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						oninput={(e) =>
+							(linkCheckerExclude = (e.target as HTMLTextAreaElement).value
+								.split('\n')
+								.filter((l) => l.trim()))}
 						class="font-mono text-xs"
 					/>
 					<p class="text-xs text-muted-foreground">
 						URL patterns to skip (one per line). Supports strings or regex patterns.
 					</p>
 				</div>
-				
+
 				<div class="grid gap-6 md:grid-cols-2">
 					<div class="space-y-2">
 						<Label for="linkCheckerConcurrency">Max Concurrency</Label>
@@ -496,12 +509,7 @@
 					</div>
 					<div class="space-y-2">
 						<Label for="linkCheckerTimeout">Timeout (seconds)</Label>
-						<Input
-							id="linkCheckerTimeout"
-							type="number"
-							min="1"
-							bind:value={linkCheckerTimeout}
-						/>
+						<Input id="linkCheckerTimeout" type="number" min="1" bind:value={linkCheckerTimeout} />
 					</div>
 				</div>
 
@@ -511,22 +519,29 @@
 						id="linkCheckerIgnoreParams"
 						placeholder="ver&#10;v&#10;_"
 						value={linkCheckerIgnoreParams.join('\n')}
-						oninput={(e) => linkCheckerIgnoreParams = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						oninput={(e) =>
+							(linkCheckerIgnoreParams = (e.target as HTMLTextAreaElement).value
+								.split('\n')
+								.filter((l) => l.trim()))}
 						class="font-mono text-xs"
 						rows={3}
 					/>
 					<p class="text-xs text-muted-foreground">
-						Query parameters to ignore when comparing URLs (one per line). 
-						Default ignored: ver, v, _, t, timestamp, cache, cb, nocache
+						Query parameters to ignore when comparing URLs (one per line). Default ignored: ver, v,
+						_, t, timestamp, cache, cb, nocache
 					</p>
 				</div>
-				
-				<input type="hidden" name="linkCheckerConfig" value={JSON.stringify({
-					exclude: linkCheckerExclude,
-					maxConcurrency: linkCheckerConcurrency,
-					timeout: linkCheckerTimeout,
-					ignoreQueryParams: linkCheckerIgnoreParams
-				})} />
+
+				<input
+					type="hidden"
+					name="linkCheckerConfig"
+					value={JSON.stringify({
+						exclude: linkCheckerExclude,
+						maxConcurrency: linkCheckerConcurrency,
+						timeout: linkCheckerTimeout,
+						ignoreQueryParams: linkCheckerIgnoreParams
+					})}
+				/>
 			</CardContent>
 		</Card>
 
@@ -534,73 +549,84 @@
 			<CardHeader>
 				<CardTitle>Performance & Timeouts</CardTitle>
 				<CardDescription>
-					Configure concurrency and timeouts to manage system load. Lower concurrency if you experience network errors.
+					Configure concurrency and timeouts to manage system load. Lower concurrency if you
+					experience network errors.
 				</CardDescription>
 			</CardHeader>
 			<CardContent class="grid gap-6 md:grid-cols-2">
 				<div class="space-y-2">
-					<label for="asyncCaptureLimit" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<label
+						for="asyncCaptureLimit"
+						class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>
 						Capture Concurrency
 					</label>
-					<Input 
-						id="asyncCaptureLimit" 
-						name="asyncCaptureLimit" 
-						type="number" 
-						min="1" 
-						max="10" 
-						bind:value={asyncCaptureLimit} 
+					<Input
+						id="asyncCaptureLimit"
+						name="asyncCaptureLimit"
+						type="number"
+						min="1"
+						max="10"
+						bind:value={asyncCaptureLimit}
 					/>
 					<p class="text-xs text-muted-foreground">
 						Number of browser tabs opening simultaneously to capture screenshots.
 					</p>
 				</div>
 				<div class="space-y-2">
-					<label for="asyncCompareLimit" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<label
+						for="asyncCompareLimit"
+						class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>
 						Compare Concurrency
 					</label>
-					<Input 
-						id="asyncCompareLimit" 
-						name="asyncCompareLimit" 
-						type="number" 
-						min="1" 
-						max="100" 
-						bind:value={asyncCompareLimit} 
+					<Input
+						id="asyncCompareLimit"
+						name="asyncCompareLimit"
+						type="number"
+						min="1"
+						max="100"
+						bind:value={asyncCompareLimit}
 					/>
 					<p class="text-xs text-muted-foreground">
 						Number of image pairs compared simultaneously.
 					</p>
 				</div>
 				<div class="space-y-2">
-					<label for="waitTimeout" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<label
+						for="waitTimeout"
+						class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>
 						Wait Timeout (ms)
 					</label>
-					<Input 
-						id="waitTimeout" 
-						name="waitTimeout" 
-						type="number" 
-						min="1000" 
+					<Input
+						id="waitTimeout"
+						name="waitTimeout"
+						type="number"
+						min="1000"
 						step="1000"
-						bind:value={waitTimeout} 
+						bind:value={waitTimeout}
 					/>
 					<p class="text-xs text-muted-foreground">
 						Max time to wait for selectors/elements to appear.
 					</p>
 				</div>
 				<div class="space-y-2">
-					<label for="gotoTimeout" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<label
+						for="gotoTimeout"
+						class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>
 						Navigation Timeout (ms)
 					</label>
-					<Input 
-						id="gotoTimeout" 
-						name="gotoTimeout" 
-						type="number" 
-						min="1000" 
+					<Input
+						id="gotoTimeout"
+						name="gotoTimeout"
+						type="number"
+						min="1000"
 						step="1000"
-						bind:value={gotoTimeout} 
+						bind:value={gotoTimeout}
 					/>
-					<p class="text-xs text-muted-foreground">
-						Max time to wait for pages to load.
-					</p>
+					<p class="text-xs text-muted-foreground">Max time to wait for pages to load.</p>
 				</div>
 			</CardContent>
 		</Card>

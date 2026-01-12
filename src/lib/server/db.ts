@@ -164,10 +164,16 @@ function resetStaleStates(database: SqlJsDatabase) {
 	const linkCount = (linkReset[0]?.values[0]?.[0] as number) || 0;
 
 	if (pairCount > 0 || linkCount > 0) {
-		console.log(`[DB] Resetting ${pairCount} visual test(s) and ${linkCount} link check(s) stuck in running/queued state`);
+		console.log(
+			`[DB] Resetting ${pairCount} visual test(s) and ${linkCount} link check(s) stuck in running/queued state`
+		);
 
-		database.run("UPDATE pair_results SET status = 'idle', progress = NULL WHERE status IN ('running', 'queued')");
-		database.run("UPDATE lychee_results SET status = 'idle', progress = NULL WHERE status IN ('running', 'queued')");
+		database.run(
+			"UPDATE pair_results SET status = 'idle', progress = NULL WHERE status IN ('running', 'queued')"
+		);
+		database.run(
+			"UPDATE lychee_results SET status = 'idle', progress = NULL WHERE status IN ('running', 'queued')"
+		);
 	}
 }
 
@@ -331,10 +337,9 @@ export function getProjects(): Project[] {
 
 		const project = rowToProject(rowObj);
 
-		const pairResults = database.exec(
-			'SELECT * FROM pair_results WHERE project_id = ?',
-			[rowObj.id as string]
-		);
+		const pairResults = database.exec('SELECT * FROM pair_results WHERE project_id = ?', [
+			rowObj.id as string
+		]);
 
 		if (pairResults.length > 0 && pairResults[0].values.length > 0) {
 			const prCols = pairResults[0].columns;
@@ -350,9 +355,7 @@ export function getProjects(): Project[] {
 				project.pairResults[pairId] = {
 					status: (prObj.status as 'idle' | 'queued' | 'running') || 'idle',
 					lastRun: (prObj.last_run as string) ?? undefined,
-					lastResult: prObj.last_result
-						? JSON.parse(prObj.last_result as string)
-						: undefined,
+					lastResult: prObj.last_result ? JSON.parse(prObj.last_result as string) : undefined,
 					progress: prObj.progress ? JSON.parse(prObj.progress as string) : undefined
 				};
 			}
@@ -363,7 +366,9 @@ export function getProjects(): Project[] {
 
 	// Fetch all link check results and attach to projects
 	for (const project of projects) {
-		const lrResult = database.exec('SELECT * FROM lychee_results WHERE project_id = ?', [project.id]);
+		const lrResult = database.exec('SELECT * FROM lychee_results WHERE project_id = ?', [
+			project.id
+		]);
 		if (lrResult.length > 0 && lrResult[0].values.length > 0) {
 			const lrCols = lrResult[0].columns;
 			project.linkCheckResults = {};
@@ -376,8 +381,12 @@ export function getProjects(): Project[] {
 				project.linkCheckResults[pairId] = {
 					status: (lrObj.status as 'idle' | 'queued' | 'running') || 'idle',
 					lastRun: (lrObj.last_run as string) ?? undefined,
-					canonical: lrObj.canonical_result ? JSON.parse(lrObj.canonical_result as string) : undefined,
-					candidate: lrObj.candidate_result ? JSON.parse(lrObj.candidate_result as string) : undefined,
+					canonical: lrObj.canonical_result
+						? JSON.parse(lrObj.canonical_result as string)
+						: undefined,
+					candidate: lrObj.candidate_result
+						? JSON.parse(lrObj.candidate_result as string)
+						: undefined,
 					error: (lrObj.error as string) ?? undefined,
 					progress: lrObj.progress ? JSON.parse(lrObj.progress as string) : undefined
 				};
@@ -438,8 +447,12 @@ export function getProject(id: string): Project | undefined {
 			project.linkCheckResults[pairId] = {
 				status: (lrObj.status as 'idle' | 'queued' | 'running') || 'idle',
 				lastRun: (lrObj.last_run as string) ?? undefined,
-				canonical: lrObj.canonical_result ? JSON.parse(lrObj.canonical_result as string) : undefined,
-				candidate: lrObj.candidate_result ? JSON.parse(lrObj.candidate_result as string) : undefined,
+				canonical: lrObj.canonical_result
+					? JSON.parse(lrObj.canonical_result as string)
+					: undefined,
+				candidate: lrObj.candidate_result
+					? JSON.parse(lrObj.candidate_result as string)
+					: undefined,
 				error: (lrObj.error as string) ?? undefined,
 				progress: lrObj.progress ? JSON.parse(lrObj.progress as string) : undefined
 			};
@@ -582,9 +595,8 @@ export function updateLinkCheckResult(
 	candidate = update.candidate !== undefined ? JSON.stringify(update.candidate) : candidate;
 	error = update.error ?? error;
 	// Use 'progress' in update to check if the key was explicitly provided
-	progress = 'progress' in update
-		? (update.progress ? JSON.stringify(update.progress) : null) 
-		: progress;
+	progress =
+		'progress' in update ? (update.progress ? JSON.stringify(update.progress) : null) : progress;
 
 	database.run(
 		`INSERT INTO lychee_results (project_id, pair_id, status, last_run, canonical_result, candidate_result, error, progress)
@@ -640,9 +652,7 @@ export function updatePairResult(
 	const status = update.status ?? currentStatus;
 	const lastRun = update.lastRun ?? currentLastRun;
 	const lastResult =
-		update.lastResult !== undefined
-			? JSON.stringify(update.lastResult)
-			: currentLastResult;
+		update.lastResult !== undefined ? JSON.stringify(update.lastResult) : currentLastResult;
 	const progress =
 		update.progress !== undefined
 			? update.progress

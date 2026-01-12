@@ -47,14 +47,18 @@ export const actions: Actions = {
 			: ['/'];
 		project.delay = delayStr ? parseInt(delayStr, 10) : undefined;
 		project.clickSelector = clickSelector?.trim() || undefined;
-		project.postInteractionWait = postInteractionWaitStr ? parseInt(postInteractionWaitStr, 10) : undefined;
+		project.postInteractionWait = postInteractionWaitStr
+			? parseInt(postInteractionWaitStr, 10)
+			: undefined;
 		project.hideSelectors = hideSelectorsStr
 			? hideSelectorsStr
 					.split('\n')
 					.map((s) => s.trim())
 					.filter((s) => s)
 			: undefined;
-		project.linkCheckerConfig = linkCheckerConfigJson ? JSON.parse(linkCheckerConfigJson) : undefined;
+		project.linkCheckerConfig = linkCheckerConfigJson
+			? JSON.parse(linkCheckerConfigJson)
+			: undefined;
 
 		db.saveProject(project);
 		redirect(303, `/project/${params.id}`);
@@ -64,4 +68,3 @@ export const actions: Actions = {
 		redirect(303, '/');
 	}
 };
-

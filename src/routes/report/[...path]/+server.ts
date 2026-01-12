@@ -79,13 +79,23 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		// Cache Handling
 		const fileName = path.basename(requestedPath);
 		let cacheControl = 'no-cache';
-		if (requestedPath.includes('bitmaps_test') && (ext === '.png' || ext === '.jpg' || ext === '.jpeg')) {
+		if (
+			requestedPath.includes('bitmaps_test') &&
+			(ext === '.png' || ext === '.jpg' || ext === '.jpeg')
+		) {
 			// Test images are immutable and heavy, cache them aggressively (1 year)
 			cacheControl = 'public, max-age=31536000, immutable';
 		} else if (fileName === 'config.js') {
 			// config.js contains dynamic test results - never cache
 			cacheControl = 'no-store, must-revalidate';
-		} else if (requestedPath.includes('assets') || ext === '.js' || ext === '.css' || ext === '.woff' || ext === '.woff2' || ext === '.ttf') {
+		} else if (
+			requestedPath.includes('assets') ||
+			ext === '.js' ||
+			ext === '.css' ||
+			ext === '.woff' ||
+			ext === '.woff2' ||
+			ext === '.ttf'
+		) {
 			// Static assets can be cached
 			cacheControl = 'public, max-age=86400'; // 1 day
 		}
@@ -149,7 +159,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			</script>
 			`;
 			const injectedHtml = htmlContent.replace('</body>', script + '</body>');
-			
+
 			return new Response(injectedHtml, {
 				headers: {
 					'Content-Type': contentType,

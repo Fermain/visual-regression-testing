@@ -125,26 +125,31 @@
 				</div>
 			</div>
 			<div class="h-2.5 w-full bg-secondary rounded-full overflow-hidden">
-			<div class="h-full flex">
-				<div 
-					class="h-full bg-green-500 transition-all duration-500 ease-out"
-					style="width: {successPercent}%"
-				></div>
-				<div 
-					class="h-full bg-destructive transition-all duration-500 ease-out"
-					style="width: {failedPercent}%"
-				></div>
+				<div class="h-full flex">
+					<div
+						class="h-full bg-green-500 transition-all duration-500 ease-out"
+						style="width: {successPercent}%"
+					></div>
+					<div
+						class="h-full bg-destructive transition-all duration-500 ease-out"
+						style="width: {failedPercent}%"
+					></div>
+				</div>
 			</div>
-		</div>
-			
+
 			<!-- Project breakdown -->
 			{#if data.progress.projects.length > 1}
 				<div class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
 					{#each data.progress.projects as proj}
-						{@const projPercent = proj.total > 0 ? ((proj.completed + proj.failed) / proj.total) * 100 : 0}
+						{@const projPercent =
+							proj.total > 0 ? ((proj.completed + proj.failed) / proj.total) * 100 : 0}
 						{@const isDone = proj.completed + proj.failed === proj.total}
 						{@const hasFailed = proj.failed > 0}
-						<div class="text-xs p-2 rounded border bg-muted/30 {isDone && !hasFailed ? 'border-green-500/30' : ''} {hasFailed ? 'border-destructive/30' : ''}">
+						<div
+							class="text-xs p-2 rounded border bg-muted/30 {isDone && !hasFailed
+								? 'border-green-500/30'
+								: ''} {hasFailed ? 'border-destructive/30' : ''}"
+						>
 							<div class="flex items-center justify-between mb-1">
 								<span class="font-medium truncate" title={proj.name}>{proj.name}</span>
 								{#if isDone}
@@ -156,8 +161,10 @@
 								{/if}
 							</div>
 							<div class="h-1 w-full bg-secondary rounded-full overflow-hidden">
-								<div 
-									class="h-full {hasFailed ? 'bg-destructive' : 'bg-green-500'} transition-all duration-300"
+								<div
+									class="h-full {hasFailed
+										? 'bg-destructive'
+										: 'bg-green-500'} transition-all duration-300"
 									style="width: {projPercent}%"
 								></div>
 							</div>
@@ -171,7 +178,9 @@
 	<!-- Currently Running -->
 	{#if data.running}
 		<div class="mb-8">
-			<h2 class="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">Running</h2>
+			<h2 class="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+				Running
+			</h2>
 			<div class="rounded-lg border bg-card p-4">
 				<div class="flex items-center gap-3">
 					<Loader2Icon class="h-5 w-5 animate-spin text-blue-500" />
@@ -185,7 +194,11 @@
 						{#if runningTimeRemaining !== null && data.running?.estimatedDurationMs && data.running?.startedAt}
 							{@const elapsed = now - new Date(data.running.startedAt).getTime()}
 							{@const overTime = elapsed - data.running.estimatedDurationMs}
-							<span class="flex items-center gap-1 font-mono tabular-nums {overTime > 0 ? 'text-red-500' : ''}">
+							<span
+								class="flex items-center gap-1 font-mono tabular-nums {overTime > 0
+									? 'text-red-500'
+									: ''}"
+							>
 								<TimerIcon class="h-3.5 w-3.5" />
 								{#if overTime > 0}
 									+{formatDuration(overTime)}
@@ -205,8 +218,10 @@
 					{@const elapsed = now - new Date(data.running.startedAt).getTime()}
 					{@const progressPct = Math.min(100, (elapsed / data.running.estimatedDurationMs) * 100)}
 					<div class="mt-3 h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-						<div 
-							class="h-full bg-blue-500 transition-all duration-1000 ease-linear {progressPct >= 100 ? 'bg-amber-500' : ''}"
+						<div
+							class="h-full bg-blue-500 transition-all duration-1000 ease-linear {progressPct >= 100
+								? 'bg-amber-500'
+								: ''}"
 							style="width: {progressPct}%"
 						></div>
 					</div>
@@ -226,7 +241,9 @@
 			<div class="space-y-2">
 				{#each data.queued as job, i}
 					<div class="rounded-lg border bg-card p-3 flex items-center gap-3 group">
-						<div class="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+						<div
+							class="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium"
+						>
 							{i + 1}
 						</div>
 						<ClockIcon class="h-4 w-4 text-muted-foreground" />
@@ -240,7 +257,7 @@
 							</span>
 						{/if}
 						<Badge variant="outline" class="text-xs">{job.command}</Badge>
-						<button 
+						<button
 							onclick={() => cancelJob(job.id)}
 							class="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity"
 							title="Cancel this job"

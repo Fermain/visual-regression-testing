@@ -51,21 +51,21 @@
 
 	async function handleRunAll() {
 		if (isRunningAll) return;
-		
+
 		if (!selectedPairId) {
 			alert('Please select an environment first');
 			return;
 		}
-		
+
 		isRunningAll = true;
 
 		try {
 			const res = await fetch('/api/run-all', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ 
+				body: JSON.stringify({
 					commands: ['reference', 'test'],
-					pairId: selectedPairId 
+					pairId: selectedPairId
 				})
 			});
 			const data = await res.json();
@@ -110,7 +110,7 @@
 		<Sidebar.MenuItem>
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div 
+			<div
 				class="flex w-full items-center gap-2 rounded-md p-2 text-sm cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
 				onclick={handleRunAll}
 			>

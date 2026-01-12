@@ -26,22 +26,31 @@ export const load: PageServerLoad = async () => {
 	// Calculate overall progress for active batch
 	// A "batch" is all jobs that are queued, running, or recently completed
 	const activeJobs = enrichedQueue.filter(
-		(j) => j.status === 'queued' || j.status === 'running' || j.status === 'completed' || j.status === 'failed'
+		(j) =>
+			j.status === 'queued' ||
+			j.status === 'running' ||
+			j.status === 'completed' ||
+			j.status === 'failed'
 	);
-	
+
 	const totalJobs = activeJobs.length;
-	const completedJobs = activeJobs.filter((j) => j.status === 'completed' || j.status === 'failed').length;
+	const completedJobs = activeJobs.filter(
+		(j) => j.status === 'completed' || j.status === 'failed'
+	).length;
 	const successfulJobs = activeJobs.filter((j) => j.status === 'completed').length;
 	const failedJobs = activeJobs.filter((j) => j.status === 'failed').length;
-	
+
 	// Group by project to show project-level progress
-	const projectProgress = new Map<string, { name: string; total: number; completed: number; failed: number }>();
+	const projectProgress = new Map<
+		string,
+		{ name: string; total: number; completed: number; failed: number }
+	>();
 	for (const job of activeJobs) {
-		const existing = projectProgress.get(job.projectId) || { 
-			name: job.projectName, 
-			total: 0, 
+		const existing = projectProgress.get(job.projectId) || {
+			name: job.projectName,
+			total: 0,
 			completed: 0,
-			failed: 0 
+			failed: 0
 		};
 		existing.total++;
 		if (job.status === 'completed') existing.completed++;
@@ -79,4 +88,3 @@ export const load: PageServerLoad = async () => {
 		}
 	};
 };
-

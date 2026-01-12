@@ -18,7 +18,7 @@ describe('generateSafeLabel', () => {
 	it('should truncate long paths and add a hash', () => {
 		const longPath = '/a'.repeat(50); // 100 characters
 		const result = generateSafeLabel(longPath);
-		
+
 		expect(result.length).toBeLessThanOrEqual(80);
 		expect(result).toMatch(/_[a-f0-9]{8}$/);
 	});
@@ -26,10 +26,10 @@ describe('generateSafeLabel', () => {
 	it('should generate different labels for different long paths with same prefix', () => {
 		const longPath1 = '/prefix' + 'a'.repeat(100);
 		const longPath2 = '/prefix' + 'b'.repeat(100);
-		
+
 		const label1 = generateSafeLabel(longPath1);
 		const label2 = generateSafeLabel(longPath2);
-		
+
 		expect(label1).not.toBe(label2);
 	});
 });

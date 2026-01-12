@@ -35,7 +35,10 @@
 					{#each data.passing as p}
 						<TableRow>
 							<TableCell>
-								<a href="/project/{p.projectId}?pair={p.pairId}" class="text-blue-600 hover:underline">
+								<a
+									href="/project/{p.projectId}?pair={p.pairId}"
+									class="text-blue-600 hover:underline"
+								>
 									{p.projectName}
 								</a>
 							</TableCell>
@@ -47,10 +50,18 @@
 								<Badge variant="outline">{p.viewport}</Badge>
 							</TableCell>
 							<TableCell class="space-x-2">
-								<a href={p.referenceUrl} target="_blank" class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+								<a
+									href={p.referenceUrl}
+									target="_blank"
+									class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+								>
 									ref <ExternalLinkIcon class="h-3 w-3" />
 								</a>
-								<a href={p.url} target="_blank" class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+								<a
+									href={p.url}
+									target="_blank"
+									class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+								>
 									test <ExternalLinkIcon class="h-3 w-3" />
 								</a>
 							</TableCell>
@@ -61,4 +72,3 @@
 		</div>
 	{/if}
 </div>
-

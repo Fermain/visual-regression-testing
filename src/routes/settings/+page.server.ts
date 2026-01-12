@@ -22,7 +22,9 @@ export const actions: Actions = {
 		try {
 			const viewports: Viewport[] = JSON.parse(viewportsJson);
 			const urlPairs: UrlPair[] = JSON.parse(urlPairsJson);
-			const linkCheckerConfig = linkCheckerConfigJson ? JSON.parse(linkCheckerConfigJson) : undefined;
+			const linkCheckerConfig = linkCheckerConfigJson
+				? JSON.parse(linkCheckerConfigJson)
+				: undefined;
 
 			// Validate viewports
 			if (!Array.isArray(viewports) || viewports.length === 0) {
@@ -57,10 +59,14 @@ export const actions: Actions = {
 			}
 
 			// Validate other settings
-			if (asyncCaptureLimit < 1) return { success: false, error: 'Capture concurrency must be at least 1' };
-			if (asyncCompareLimit < 1) return { success: false, error: 'Compare concurrency must be at least 1' };
-			if (waitTimeout < 1000) return { success: false, error: 'Wait timeout must be at least 1000ms' };
-			if (gotoTimeout < 1000) return { success: false, error: 'Goto timeout must be at least 1000ms' };
+			if (asyncCaptureLimit < 1)
+				return { success: false, error: 'Capture concurrency must be at least 1' };
+			if (asyncCompareLimit < 1)
+				return { success: false, error: 'Compare concurrency must be at least 1' };
+			if (waitTimeout < 1000)
+				return { success: false, error: 'Wait timeout must be at least 1000ms' };
+			if (gotoTimeout < 1000)
+				return { success: false, error: 'Goto timeout must be at least 1000ms' };
 
 			saveSettings({
 				viewports,
@@ -77,5 +83,3 @@ export const actions: Actions = {
 		}
 	}
 };
-
-

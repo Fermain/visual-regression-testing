@@ -13,5 +13,3 @@ export const POST: RequestHandler = async ({ request }) => {
 	const cancelled = cancelProjectJobs(projectId, pairId);
 	return json({ success: true, cancelled });
 };
-
-

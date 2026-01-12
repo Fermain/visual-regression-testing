@@ -79,13 +79,15 @@ module.exports = async (page, scenario) => {
 		});
 
 		// data-src → src patterns
-		document.querySelectorAll('img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
-			const src = img.dataset.src || img.dataset.lazySrc || img.dataset.original;
-			if (src && (!img.src || img.src.includes('data:') || img.src.includes('placeholder'))) {
-				img.src = src;
-				lazified++;
-			}
-		});
+		document
+			.querySelectorAll('img[data-src], img[data-lazy-src], img[data-original]')
+			.forEach((img) => {
+				const src = img.dataset.src || img.dataset.lazySrc || img.dataset.original;
+				if (src && (!img.src || img.src.includes('data:') || img.src.includes('placeholder'))) {
+					img.src = src;
+					lazified++;
+				}
+			});
 
 		// data-srcset → srcset
 		document.querySelectorAll('img[data-srcset]').forEach((img) => {
@@ -108,7 +110,10 @@ module.exports = async (page, scenario) => {
 		document.querySelectorAll('video').forEach((vid) => {
 			vid.autoplay = false;
 			vid.preload = 'metadata';
-			try { vid.pause(); vid.currentTime = 0; } catch {}
+			try {
+				vid.pause();
+				vid.currentTime = 0;
+			} catch {}
 		});
 
 		// Video.js
@@ -116,7 +121,10 @@ module.exports = async (page, scenario) => {
 			document.querySelectorAll('.video-js').forEach((el) => {
 				try {
 					const p = window.videojs(el);
-					if (p) { p.pause(); p.currentTime(0); }
+					if (p) {
+						p.pause();
+						p.currentTime(0);
+					}
 				} catch {}
 			});
 		}
@@ -169,7 +177,8 @@ module.exports = async (page, scenario) => {
 			validImages.forEach((img) => {
 				// Use decode() API if available - this ensures image is ready to paint
 				if (img.decode) {
-					img.decode()
+					img
+						.decode()
 						.then(() => {
 							decoded++;
 							checkDone();
@@ -190,8 +199,15 @@ module.exports = async (page, scenario) => {
 						decoded++;
 					} else {
 						// Wait for load event
-						img.onload = () => { decoded++; checkDone(); };
-						img.onerror = () => { failed++; failedUrls.push(img.src.slice(0, 80)); checkDone(); };
+						img.onload = () => {
+							decoded++;
+							checkDone();
+						};
+						img.onerror = () => {
+							failed++;
+							failedUrls.push(img.src.slice(0, 80));
+							checkDone();
+						};
 						// Force reload if stuck
 						const src = img.src;
 						img.src = '';
@@ -215,9 +231,11 @@ module.exports = async (page, scenario) => {
 		});
 	});
 
-	log(`Decoded: ${decodeResult.decoded}/${decodeResult.total}` +
-		(decodeResult.failed ? ` (${decodeResult.failed} failed)` : '') +
-		(decodeResult.timedOut ? ' [timeout]' : ''));
+	log(
+		`Decoded: ${decodeResult.decoded}/${decodeResult.total}` +
+			(decodeResult.failed ? ` (${decodeResult.failed} failed)` : '') +
+			(decodeResult.timedOut ? ' [timeout]' : '')
+	);
 	if (decodeResult.failedUrls?.length) {
 		log(`Failed: ${decodeResult.failedUrls.join(', ')}`);
 	}

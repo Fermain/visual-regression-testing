@@ -46,16 +46,16 @@
 	let hasReport = $derived(report !== null);
 	let hasReference = $derived(data.hasReference);
 	let reportUrl = $derived(
-		project && selectedPair
-			? `/report/${project.id}/${selectedPair.id}/html_report/index.html`
-			: ''
+		project && selectedPair ? `/report/${project.id}/${selectedPair.id}/html_report/index.html` : ''
 	);
 	let referenceBasePath = $derived(
 		project && selectedPair ? `/report/${project.id}/${selectedPair.id}` : ''
 	);
 
 	// Status management
-	let isRunning = $derived(pairResult?.status === 'running' || linkCheckResult?.status === 'running');
+	let isRunning = $derived(
+		pairResult?.status === 'running' || linkCheckResult?.status === 'running'
+	);
 	let isQueued = $derived(pairResult?.status === 'queued' || linkCheckResult?.status === 'queued');
 	let isBusy = $derived(isRunning || isQueued);
 	let runningCommand = $state<'reference' | 'test' | 'approve' | 'linkcheck' | null>(null);
@@ -75,7 +75,12 @@
 
 	// Poll for status updates when queued or running
 	$effect(() => {
-		if (pairResult?.status === 'running' || pairResult?.status === 'queued' || linkCheckResult?.status === 'running' || linkCheckResult?.status === 'queued') {
+		if (
+			pairResult?.status === 'running' ||
+			pairResult?.status === 'queued' ||
+			linkCheckResult?.status === 'running' ||
+			linkCheckResult?.status === 'queued'
+		) {
 			if (!pollInterval) {
 				pollInterval = setInterval(() => {
 					invalidateAll();
@@ -150,9 +155,9 @@
 		await fetch('/api/project/cancel', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ 
-				projectId: project.id, 
-				pairId: selectedPair.id 
+			body: JSON.stringify({
+				projectId: project.id,
+				pairId: selectedPair.id
 			})
 		});
 		invalidateAll();
@@ -161,15 +166,19 @@
 	// Link analysis helper
 	let linkComparison = $derived.by(() => {
 		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return null;
-		
-		const canonicalLinks = new Set(linkCheckResult.canonical.links.map(l => l.url));
-		const candidateLinks = new Set(linkCheckResult.candidate.links.map(l => l.url));
-		
-		const dropped = Array.from(canonicalLinks).filter(url => !candidateLinks.has(url));
-		const added = Array.from(candidateLinks).filter(url => !canonicalLinks.has(url));
-		
-		const brokenCanonical = linkCheckResult.canonical.links.filter(l => l.status !== 'Ok' && l.status !== 'OK');
-		const brokenCandidate = linkCheckResult.candidate.links.filter(l => l.status !== 'Ok' && l.status !== 'OK');
+
+		const canonicalLinks = new Set(linkCheckResult.canonical.links.map((l) => l.url));
+		const candidateLinks = new Set(linkCheckResult.candidate.links.map((l) => l.url));
+
+		const dropped = Array.from(canonicalLinks).filter((url) => !candidateLinks.has(url));
+		const added = Array.from(candidateLinks).filter((url) => !canonicalLinks.has(url));
+
+		const brokenCanonical = linkCheckResult.canonical.links.filter(
+			(l) => l.status !== 'Ok' && l.status !== 'OK'
+		);
+		const brokenCandidate = linkCheckResult.candidate.links.filter(
+			(l) => l.status !== 'Ok' && l.status !== 'OK'
+		);
 
 		return { dropped, added, brokenCanonical, brokenCandidate };
 	});
@@ -197,8 +206,8 @@
 		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return [];
 
 		// Use normalized URLs for comparison
-		const canonicalByKey = new Map(linkCheckResult.canonical.links.map(l => [getLinkKey(l), l]));
-		const candidateByKey = new Map(linkCheckResult.candidate.links.map(l => [getLinkKey(l), l]));
+		const canonicalByKey = new Map(linkCheckResult.canonical.links.map((l) => [getLinkKey(l), l]));
+		const candidateByKey = new Map(linkCheckResult.candidate.links.map((l) => [getLinkKey(l), l]));
 
 		// Build combined list with comparison info
 		const combined: Array<{
@@ -243,11 +252,13 @@
 		}
 
 		// Apply filter
-		return combined.filter(link => {
+		return combined.filter((link) => {
 			switch (linkFilter) {
 				case 'errors':
-					return (link.refStatus && link.refStatus !== 'OK') || 
-					       (link.testStatus && link.testStatus !== 'OK');
+					return (
+						(link.refStatus && link.refStatus !== 'OK') ||
+						(link.testStatus && link.testStatus !== 'OK')
+					);
 				case '404':
 					return link.refCode === 404 || link.testCode === 404;
 				case 'dropped':
@@ -267,8 +278,8 @@
 		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return null;
 
 		// Build combined list using same logic as filteredLinks (without filter)
-		const canonicalByKey = new Map(linkCheckResult.canonical.links.map(l => [getLinkKey(l), l]));
-		const candidateByKey = new Map(linkCheckResult.candidate.links.map(l => [getLinkKey(l), l]));
+		const canonicalByKey = new Map(linkCheckResult.canonical.links.map((l) => [getLinkKey(l), l]));
+		const candidateByKey = new Map(linkCheckResult.candidate.links.map((l) => [getLinkKey(l), l]));
 
 		const combined: Array<{
 			refStatus: string | null;
@@ -314,7 +325,10 @@
 		let ok = 0;
 
 		for (const link of combined) {
-			if ((link.refStatus && link.refStatus !== 'OK') || (link.testStatus && link.testStatus !== 'OK')) {
+			if (
+				(link.refStatus && link.refStatus !== 'OK') ||
+				(link.testStatus && link.testStatus !== 'OK')
+			) {
 				errors++;
 			}
 			if (link.refCode === 404 || link.testCode === 404) {
@@ -333,14 +347,26 @@
 	// Hotkeys for filters
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-		
+
 		switch (e.key) {
-			case '1': linkFilter = 'all'; break;
-			case '2': linkFilter = 'errors'; break;
-			case '3': linkFilter = '404'; break;
-			case '4': linkFilter = 'dropped'; break;
-			case '5': linkFilter = 'added'; break;
-			case '0': linkFilter = 'ok'; break;
+			case '1':
+				linkFilter = 'all';
+				break;
+			case '2':
+				linkFilter = 'errors';
+				break;
+			case '3':
+				linkFilter = '404';
+				break;
+			case '4':
+				linkFilter = 'dropped';
+				break;
+			case '5':
+				linkFilter = 'added';
+				break;
+			case '0':
+				linkFilter = 'ok';
+				break;
 		}
 	}
 </script>
@@ -373,11 +399,18 @@ This action cannot be undone."
 
 <!-- Lightbox -->
 <Dialog.Root bind:open={lightboxOpen}>
-	<Dialog.Content showCloseButton={false} class="max-w-[95vw] w-auto h-[95vh] p-0 overflow-hidden bg-transparent border-0 shadow-none flex flex-col items-center justify-center outline-none">
-		<div class="relative w-full h-full flex flex-col items-center bg-black/80 backdrop-blur-sm rounded-lg overflow-hidden border border-white/10">
+	<Dialog.Content
+		showCloseButton={false}
+		class="max-w-[95vw] w-auto h-[95vh] p-0 overflow-hidden bg-transparent border-0 shadow-none flex flex-col items-center justify-center outline-none"
+	>
+		<div
+			class="relative w-full h-full flex flex-col items-center bg-black/80 backdrop-blur-sm rounded-lg overflow-hidden border border-white/10"
+		>
 			<!-- Header / Close area -->
 			<div class="absolute top-4 right-4 z-50">
-				<Dialog.Close class="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors">
+				<Dialog.Close
+					class="bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+				>
 					<XIcon class="w-6 h-6" />
 				</Dialog.Close>
 			</div>
@@ -385,8 +418,8 @@ This action cannot be undone."
 			<!-- Image Container -->
 			<div class="flex-1 w-full overflow-auto p-8 flex items-start justify-center">
 				{#if lightboxImage}
-					<img 
-						src="{referenceBasePath}/bitmaps_reference/{lightboxImage}" 
+					<img
+						src="{referenceBasePath}/bitmaps_reference/{lightboxImage}"
 						alt={lightboxImage}
 						class="max-w-full h-auto object-contain shadow-2xl rounded-sm"
 					/>
@@ -395,7 +428,9 @@ This action cannot be undone."
 
 			<!-- Footer -->
 			{#if lightboxImage}
-				<div class="w-full p-4 bg-black/50 backdrop-blur-md border-t border-white/10 text-center shrink-0 z-10">
+				<div
+					class="w-full p-4 bg-black/50 backdrop-blur-md border-t border-white/10 text-center shrink-0 z-10"
+				>
 					<p class="text-white/90 font-mono text-sm break-all">
 						{lightboxImage}
 					</p>
@@ -489,7 +524,7 @@ This action cannot be undone."
 							</Button>
 						</DropdownMenu.Trigger>
 						<DropdownMenu.Content align="start">
-							<DropdownMenu.Item 
+							<DropdownMenu.Item
 								onclick={() => handleButtonClick('reference')}
 								disabled={isBusy || !selectedPair}
 								class="cursor-pointer"
@@ -498,7 +533,7 @@ This action cannot be undone."
 								Recreate Reference
 							</DropdownMenu.Item>
 							{#if !reportStats || reportStats.failed === 0}
-								<DropdownMenu.Item 
+								<DropdownMenu.Item
 									onclick={() => handleButtonClick('approve')}
 									disabled={isBusy || !hasReport || !selectedPair}
 									class="cursor-pointer"
@@ -537,7 +572,7 @@ This action cannot be undone."
 				<div class="flex items-center gap-2 text-xs text-muted-foreground ml-2">
 					<Loader2Icon class="h-3 w-3 animate-spin" />
 					<span>Queued{queuePosition > 0 ? ` (#${queuePosition})` : ''}</span>
-					<button 
+					<button
 						onclick={cancelQueuedJobs}
 						class="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-destructive/10 text-destructive transition-colors"
 						title="Cancel queued jobs"
@@ -559,7 +594,7 @@ This action cannot be undone."
 					</div>
 					{#if visualProgress.total > 0}
 						<div class="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-							<div 
+							<div
 								class="h-full bg-primary transition-all duration-500 ease-out"
 								style="width: {(visualProgress.completed / visualProgress.total) * 100}%"
 							></div>
@@ -579,7 +614,10 @@ This action cannot be undone."
 							{/if}
 						</div>
 						{#if linkProgress?.current}
-							<div class="text-[10px] text-muted-foreground/70 truncate" title={linkProgress.current}>
+							<div
+								class="text-[10px] text-muted-foreground/70 truncate"
+								title={linkProgress.current}
+							>
 								{linkProgress.current}
 							</div>
 						{/if}
@@ -592,7 +630,10 @@ This action cannot be undone."
 			<!-- Report Status -->
 			{#if reportStats && !isRunning}
 				<div class="flex items-center gap-1.5 mr-3">
-					<Badge variant="outline" class={reportStats.failed === 0 ? "border-green-500/50 text-green-600" : ""}>
+					<Badge
+						variant="outline"
+						class={reportStats.failed === 0 ? 'border-green-500/50 text-green-600' : ''}
+					>
 						{reportStats.passed} passed
 					</Badge>
 					{#if reportStats.failed > 0}
@@ -609,19 +650,32 @@ This action cannot be undone."
 					{formatDistanceToNow(new Date(pairResult.lastRun), { addSuffix: true })}
 				</span>
 			{/if}
-			
-			<Button variant="ghost" size="icon" href="/project/{project.id}/edit" class="h-8 w-8 cursor-pointer" title="Edit project">
+
+			<Button
+				variant="ghost"
+				size="icon"
+				href="/project/{project.id}/edit"
+				class="h-8 w-8 cursor-pointer"
+				title="Edit project"
+			>
 				<SettingsIcon class="h-4 w-4" />
 			</Button>
-			
+
 			{#if hasReport}
-				<Button variant="ghost" size="icon" href={reportUrl} target="_blank" class="h-8 w-8 cursor-pointer" title="Open report in new tab">
+				<Button
+					variant="ghost"
+					size="icon"
+					href={reportUrl}
+					target="_blank"
+					class="h-8 w-8 cursor-pointer"
+					title="Open report in new tab"
+				>
 					<ExternalLinkIcon class="h-4 w-4" />
 				</Button>
-				<Button 
-					variant="ghost" 
+				<Button
+					variant="ghost"
 					size="icon"
-					href="/api/export/{project.id}/{selectedPair?.id}" 
+					href="/api/export/{project.id}/{selectedPair?.id}"
 					class="h-8 w-8 cursor-pointer"
 					title="Export report as ZIP"
 				>
@@ -635,10 +689,16 @@ This action cannot be undone."
 	<Tabs.Root value="visual" class="flex-1 flex flex-col overflow-hidden">
 		<div class="flex items-center px-4 border-b bg-muted/10 shrink-0 h-10">
 			<Tabs.List class="bg-transparent p-0 gap-6">
-				<Tabs.Trigger value="visual" class="h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent shadow-none">
+				<Tabs.Trigger
+					value="visual"
+					class="h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent shadow-none"
+				>
 					Visual Report
 				</Tabs.Trigger>
-				<Tabs.Trigger value="links" class="h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent shadow-none">
+				<Tabs.Trigger
+					value="links"
+					class="h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent shadow-none"
+				>
 					Link Report
 					{#if linkCheckResult?.canonical?.failed || linkCheckResult?.candidate?.failed || linkComparison?.dropped?.length}
 						<Badge variant="destructive" class="ml-2 px-1 h-4 min-w-4 text-[10px]">!</Badge>
@@ -649,44 +709,58 @@ This action cannot be undone."
 
 		<Tabs.Content value="visual" class="flex-1 relative m-0 outline-hidden">
 			{#if hasReport}
-				<iframe src={reportUrl} title="BackstopJS Report" class="absolute inset-0 w-full h-full border-0"></iframe>
+				<iframe
+					src={reportUrl}
+					title="BackstopJS Report"
+					class="absolute inset-0 w-full h-full border-0"
+				></iframe>
 			{:else if hasReference && data.referenceImages?.length > 0}
 				<div class="absolute inset-0 overflow-y-auto p-8 bg-muted/5">
 					<div class="max-w-6xl mx-auto">
 						<div class="flex items-center justify-between mb-6">
 							<div>
 								<h3 class="text-lg font-medium text-foreground">Reference Images</h3>
-								<p class="text-sm text-muted-foreground">These are the baseline images used for comparison.</p>
+								<p class="text-sm text-muted-foreground">
+									These are the baseline images used for comparison.
+								</p>
 							</div>
 							<Button size="sm" onclick={() => handleButtonClick('test')}>
 								<PlayIcon class="mr-1.5 h-3.5 w-3.5" />
 								Run Test
 							</Button>
 						</div>
-						
+
 						<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 							{#each data.referenceImages as image}
-								<div class="border rounded-lg bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+								<div
+									class="border rounded-lg bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+								>
 									<!-- svelte-ignore a11y_click_events_have_key_events -->
 									<!-- svelte-ignore a11y_no_static_element_interactions -->
-									<div 
+									<div
 										class="aspect-video relative bg-muted/20 cursor-zoom-in group"
 										onclick={() => openLightbox(image)}
 									>
-										<img 
-											src="{referenceBasePath}/bitmaps_reference/{image}" 
+										<img
+											src="{referenceBasePath}/bitmaps_reference/{image}"
 											alt={image}
 											class="absolute inset-0 w-full h-full object-contain p-2"
 											loading="lazy"
 										/>
-										<div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-											<div class="bg-background/80 backdrop-blur-sm rounded-full p-2 text-foreground shadow-sm">
+										<div
+											class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"
+										>
+											<div
+												class="bg-background/80 backdrop-blur-sm rounded-full p-2 text-foreground shadow-sm"
+											>
 												<EyeIcon class="w-5 h-5" />
 											</div>
 										</div>
 									</div>
 									<div class="p-3 border-t bg-muted/5">
-										<p class="text-xs text-muted-foreground break-all font-mono" title={image}>{image}</p>
+										<p class="text-xs text-muted-foreground break-all font-mono" title={image}>
+											{image}
+										</p>
 									</div>
 								</div>
 							{/each}
@@ -694,14 +768,17 @@ This action cannot be undone."
 					</div>
 				</div>
 			{:else}
-				<div class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5">
+				<div
+					class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/5"
+				>
 					<div class="rounded-full bg-muted p-6 mb-4">
 						<PlayIcon class="h-10 w-10 opacity-20" />
 					</div>
 					<p class="font-medium text-lg">No report available</p>
 					{#if urlPairs.length === 0}
 						<p class="text-sm max-w-md">
-							Configure URL pairs in settings, then run a test to generate the visual regression report.
+							Configure URL pairs in settings, then run a test to generate the visual regression
+							report.
 						</p>
 						<Button variant="outline" href="/settings" class="mt-4 cursor-pointer">
 							<SettingsIcon class="h-4 w-4 mr-2" />
@@ -722,80 +799,90 @@ This action cannot be undone."
 				<div class="flex items-center gap-1.5 px-4 py-2.5 border-b bg-muted/30 shrink-0">
 					<span class="text-xs font-medium text-muted-foreground mr-2">Filter:</span>
 					<button
-						onclick={() => linkFilter = 'all'}
+						onclick={() => (linkFilter = 'all')}
 						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
-							{linkFilter === 'all' 
-								? 'bg-foreground text-background' 
-								: 'bg-background border border-border hover:bg-muted text-foreground'}"
+							{linkFilter === 'all'
+							? 'bg-foreground text-background'
+							: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
 						All
 						<span class="tabular-nums">{linkStats.total}</span>
 						<kbd class="ml-0.5 px-1 rounded bg-muted/50 text-[10px] font-mono">1</kbd>
 					</button>
 					<button
-						onclick={() => linkFilter = 'errors'}
+						onclick={() => (linkFilter = 'errors')}
 						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
-							{linkFilter === 'errors' 
-								? 'bg-red-600 text-white' 
-								: linkStats.errors > 0 
-									? 'bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900'
-									: 'bg-background border border-border hover:bg-muted text-foreground'}"
+							{linkFilter === 'errors'
+							? 'bg-red-600 text-white'
+							: linkStats.errors > 0
+								? 'bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900'
+								: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
 						Errors
 						<span class="tabular-nums">{linkStats.errors}</span>
-						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">2</kbd>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono"
+							>2</kbd
+						>
 					</button>
 					<button
-						onclick={() => linkFilter = '404'}
+						onclick={() => (linkFilter = '404')}
 						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
-							{linkFilter === '404' 
-								? 'bg-red-600 text-white' 
-								: linkStats.notFound > 0 
-									? 'bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900'
-									: 'bg-background border border-border hover:bg-muted text-foreground'}"
+							{linkFilter === '404'
+							? 'bg-red-600 text-white'
+							: linkStats.notFound > 0
+								? 'bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900'
+								: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
 						404
 						<span class="tabular-nums">{linkStats.notFound}</span>
-						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">3</kbd>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono"
+							>3</kbd
+						>
 					</button>
 					<button
-						onclick={() => linkFilter = 'dropped'}
+						onclick={() => (linkFilter = 'dropped')}
 						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
-							{linkFilter === 'dropped' 
-								? 'bg-amber-500 text-white' 
-								: linkStats.dropped > 0 
-									? 'bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900'
-									: 'bg-background border border-border hover:bg-muted text-foreground'}"
+							{linkFilter === 'dropped'
+							? 'bg-amber-500 text-white'
+							: linkStats.dropped > 0
+								? 'bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900'
+								: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
 						Dropped
 						<span class="tabular-nums">{linkStats.dropped}</span>
-						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">4</kbd>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono"
+							>4</kbd
+						>
 					</button>
 					<button
-						onclick={() => linkFilter = 'added'}
+						onclick={() => (linkFilter = 'added')}
 						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
-							{linkFilter === 'added' 
-								? 'bg-blue-500 text-white' 
-								: linkStats.added > 0 
-									? 'bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900'
-									: 'bg-background border border-border hover:bg-muted text-foreground'}"
+							{linkFilter === 'added'
+							? 'bg-blue-500 text-white'
+							: linkStats.added > 0
+								? 'bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900'
+								: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
 						Added
 						<span class="tabular-nums">{linkStats.added}</span>
-						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">5</kbd>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono"
+							>5</kbd
+						>
 					</button>
 					<button
-						onclick={() => linkFilter = 'ok'}
+						onclick={() => (linkFilter = 'ok')}
 						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors
-							{linkFilter === 'ok' 
-								? 'bg-green-600 text-white' 
-								: 'bg-background border border-border hover:bg-muted text-foreground'}"
+							{linkFilter === 'ok'
+							? 'bg-green-600 text-white'
+							: 'bg-background border border-border hover:bg-muted text-foreground'}"
 					>
 						OK
 						<span class="tabular-nums">{linkStats.ok}</span>
-						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono">0</kbd>
+						<kbd class="ml-0.5 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono"
+							>0</kbd
+						>
 					</button>
-					
+
 					<span class="ml-auto text-xs text-muted-foreground font-medium tabular-nums">
 						{filteredLinks.length} link{filteredLinks.length === 1 ? '' : 's'}
 					</span>
@@ -814,16 +901,27 @@ This action cannot be undone."
 						</Table.Header>
 						<Table.Body>
 							{#each filteredLinks as link}
-								{@const hasIssue = link.isDropped || link.isAdded || 
-									(link.refStatus && link.refStatus !== 'OK') || 
+								{@const hasIssue =
+									link.isDropped ||
+									link.isAdded ||
+									(link.refStatus && link.refStatus !== 'OK') ||
 									(link.testStatus && link.testStatus !== 'OK')}
-								<Table.Row class={
-									link.isDropped ? "bg-amber-500/10" : 
-									link.isAdded ? "bg-blue-500/10" :
-									hasIssue ? "bg-destructive/5" : ""
-								}>
+								<Table.Row
+									class={link.isDropped
+										? 'bg-amber-500/10'
+										: link.isAdded
+											? 'bg-blue-500/10'
+											: hasIssue
+												? 'bg-destructive/5'
+												: ''}
+								>
 									<Table.Cell class="font-mono text-xs py-2">
-										<a href={link.url} target="_blank" class="hover:underline truncate block max-w-full" title={link.url}>
+										<a
+											href={link.url}
+											target="_blank"
+											class="hover:underline truncate block max-w-full"
+											title={link.url}
+										>
 											{link.url}
 										</a>
 									</Table.Cell>
@@ -831,7 +929,10 @@ This action cannot be undone."
 										{#if link.refStatus === null}
 											<span class="text-muted-foreground text-xs">—</span>
 										{:else if link.refStatus === 'OK'}
-											<Badge variant="outline" class="text-green-600 border-green-600/30 text-[10px] py-0">
+											<Badge
+												variant="outline"
+												class="text-green-600 border-green-600/30 text-[10px] py-0"
+											>
 												{link.refCode || 'OK'}
 											</Badge>
 										{:else}
@@ -844,7 +945,10 @@ This action cannot be undone."
 										{#if link.testStatus === null}
 											<span class="text-muted-foreground text-xs">—</span>
 										{:else if link.testStatus === 'OK'}
-											<Badge variant="outline" class="text-green-600 border-green-600/30 text-[10px] py-0">
+											<Badge
+												variant="outline"
+												class="text-green-600 border-green-600/30 text-[10px] py-0"
+											>
 												{link.testCode || 'OK'}
 											</Badge>
 										{:else}
@@ -855,9 +959,15 @@ This action cannot be undone."
 									</Table.Cell>
 									<Table.Cell class="text-center py-2">
 										{#if link.isDropped}
-											<Badge variant="outline" class="text-amber-600 border-amber-500/30 text-[10px] py-0">Dropped</Badge>
+											<Badge
+												variant="outline"
+												class="text-amber-600 border-amber-500/30 text-[10px] py-0">Dropped</Badge
+											>
 										{:else if link.isAdded}
-											<Badge variant="outline" class="text-blue-600 border-blue-500/30 text-[10px] py-0">Added</Badge>
+											<Badge
+												variant="outline"
+												class="text-blue-600 border-blue-500/30 text-[10px] py-0">Added</Badge
+											>
 										{:else if link.refStatus === 'OK' && link.testStatus === 'OK'}
 											<CheckCircleIcon class="h-4 w-4 text-green-600 mx-auto" />
 										{:else}
@@ -881,8 +991,8 @@ This action cannot be undone."
 					<p class="text-lg font-medium">Link Checker is running...</p>
 					{#if linkProgress}
 						<p class="text-sm mt-2">
-							Checking {linkProgress.phase === 'canonical' ? 'reference' : 'test'} site 
-							({linkProgress.checked} links checked)
+							Checking {linkProgress.phase === 'canonical' ? 'reference' : 'test'} site ({linkProgress.checked}
+							links checked)
 						</p>
 					{/if}
 				</div>
@@ -902,13 +1012,16 @@ This action cannot be undone."
 					</Button>
 				</div>
 			{:else}
-				<div class="flex-1 flex flex-col items-center justify-center text-muted-foreground text-center p-8">
+				<div
+					class="flex-1 flex flex-col items-center justify-center text-muted-foreground text-center p-8"
+				>
 					<div class="rounded-full bg-muted p-6 mb-4">
 						<LinkIcon class="h-12 w-12 opacity-20" />
 					</div>
 					<p class="font-medium text-lg">No Link Report Available</p>
 					<p class="text-sm max-w-md mt-2">
-						Run the link checker to verify that all links are working and ensure no links have dropped between versions.
+						Run the link checker to verify that all links are working and ensure no links have
+						dropped between versions.
 					</p>
 					<Button class="mt-6" onclick={() => handleButtonClick('linkcheck')}>
 						<PlayIcon class="mr-2 h-4 w-4" />

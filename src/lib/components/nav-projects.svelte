@@ -40,7 +40,8 @@
 <ConfirmDialog
 	bind:open={deleteDialogOpen}
 	title="Delete Project"
-	description="Are you sure you want to delete '{projectToDelete?.name ?? 'this project'}'? This will permanently remove all test data, references, and reports.
+	description="Are you sure you want to delete '{projectToDelete?.name ??
+		'this project'}'? This will permanently remove all test data, references, and reports.
 
 This action cannot be undone."
 	confirmText="Delete Project"

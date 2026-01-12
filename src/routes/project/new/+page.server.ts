@@ -54,7 +54,9 @@ export const actions: Actions = {
 			paths,
 			delay: delayStr ? parseInt(delayStr, 10) : undefined,
 			clickSelector: clickSelector?.trim() || undefined,
-			postInteractionWait: postInteractionWaitStr ? parseInt(postInteractionWaitStr, 10) : undefined,
+			postInteractionWait: postInteractionWaitStr
+				? parseInt(postInteractionWaitStr, 10)
+				: undefined,
 			hideSelectors: hideSelectors && hideSelectors.length > 0 ? hideSelectors : undefined,
 			linkCheckerConfig
 		};
@@ -63,4 +65,3 @@ export const actions: Actions = {
 		redirect(303, `/project/${newProject.id}`);
 	}
 };
-

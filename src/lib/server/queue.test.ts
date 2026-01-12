@@ -21,7 +21,7 @@ describe('queue', () => {
 		vi.clearAllMocks();
 		// Reset the in-memory queue by clearing it
 		clearCompletedJobs();
-		// Since we can't easily reset the internal 'queue' variable from outside 
+		// Since we can't easily reset the internal 'queue' variable from outside
 		// without adding a reset function, we'll just be careful with our tests
 		// or we could add a resetQueue for testing.
 	});
@@ -32,9 +32,9 @@ describe('queue', () => {
 		expect(job.command).toBe('test');
 		// First job added starts processing immediately
 		expect(['queued', 'running']).toContain(job.status);
-		
+
 		const queue = getQueue();
-		expect(queue.some(j => j.id === job.id)).toBe(true);
+		expect(queue.some((j) => j.id === job.id)).toBe(true);
 	});
 
 	it('should not add a duplicate queued job', () => {
@@ -43,9 +43,9 @@ describe('queue', () => {
 
 		const job1 = addJob('p1', 'pair-1', 'test');
 		const job2 = addJob('p1', 'pair-1', 'test');
-		
+
 		expect(job1.id).toBe(job2.id);
-		expect(getQueue().filter(j => j.projectId === 'p1').length).toBe(1);
+		expect(getQueue().filter((j) => j.projectId === 'p1').length).toBe(1);
 	});
 
 	it('should return job status', () => {
@@ -61,10 +61,10 @@ describe('queue', () => {
 		// Then we add another one that will be queued
 		const job = addJob('p3', 'pair-1', 'test');
 		expect(job.status).toBe('queued');
-		
+
 		const result = cancelJob(job.id);
-		
+
 		expect(result).toBe(true);
-		expect(getQueue().find(j => j.id === job.id)).toBeUndefined();
+		expect(getQueue().find((j) => j.id === job.id)).toBeUndefined();
 	});
 });

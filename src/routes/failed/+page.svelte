@@ -44,9 +44,7 @@
 		selected = newSet;
 	}
 
-	let selectedPaths = $derived(
-		[...selected].map((i) => data.failed[i].path)
-	);
+	let selectedPaths = $derived([...selected].map((i) => data.failed[i].path));
 
 	let uniqueSelectedPaths = $derived([...new Set(selectedPaths)]);
 
@@ -94,13 +92,13 @@
 					{#each data.failed as f, i}
 						<TableRow class={selected.has(i) ? 'bg-muted/50' : ''}>
 							<TableCell>
-								<Checkbox
-									checked={selected.has(i)}
-									onCheckedChange={() => toggleOne(i)}
-								/>
+								<Checkbox checked={selected.has(i)} onCheckedChange={() => toggleOne(i)} />
 							</TableCell>
 							<TableCell>
-								<a href="/project/{f.projectId}?pair={f.pairId}" class="text-blue-600 hover:underline">
+								<a
+									href="/project/{f.projectId}?pair={f.pairId}"
+									class="text-blue-600 hover:underline"
+								>
 									{f.projectName}
 								</a>
 							</TableCell>
@@ -113,10 +111,18 @@
 							</TableCell>
 							<TableCell class="text-right font-mono text-destructive">{f.mismatch}%</TableCell>
 							<TableCell class="space-x-2">
-								<a href={f.referenceUrl} target="_blank" class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+								<a
+									href={f.referenceUrl}
+									target="_blank"
+									class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+								>
 									ref <ExternalLinkIcon class="h-3 w-3" />
 								</a>
-								<a href={f.url} target="_blank" class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+								<a
+									href={f.url}
+									target="_blank"
+									class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+								>
 									test <ExternalLinkIcon class="h-3 w-3" />
 								</a>
 							</TableCell>
@@ -133,7 +139,10 @@
 		<Dialog.Header>
 			<Dialog.Title>Create Project from Failed Paths</Dialog.Title>
 			<Dialog.Description>
-				Create a new project containing only the {uniqueSelectedPaths.length} unique failing path{uniqueSelectedPaths.length === 1 ? '' : 's'}.
+				Create a new project containing only the {uniqueSelectedPaths.length} unique failing path{uniqueSelectedPaths.length ===
+				1
+					? ''
+					: 's'}.
 			</Dialog.Description>
 		</Dialog.Header>
 		<form method="POST" action="?/createProject" class="space-y-4">
@@ -157,12 +166,9 @@
 				</ul>
 			</div>
 			<Dialog.Footer>
-				<Button type="button" variant="outline" onclick={() => (dialogOpen = false)}>
-					Cancel
-				</Button>
+				<Button type="button" variant="outline" onclick={() => (dialogOpen = false)}>Cancel</Button>
 				<Button type="submit">Create Project</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
-

@@ -31,7 +31,9 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	// Create filename
 	const safeName = project.name.replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 30);
-	const pairDisplay = getPairDisplayName(pair).replace(/[^a-zA-Z0-9-_→]/g, '_').slice(0, 40);
+	const pairDisplay = getPairDisplayName(pair)
+		.replace(/[^a-zA-Z0-9-_→]/g, '_')
+		.slice(0, 40);
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 	const filename = `${safeName}_${timestamp}.zip`;
 
@@ -103,4 +105,3 @@ Directories
 		}
 	});
 };
-

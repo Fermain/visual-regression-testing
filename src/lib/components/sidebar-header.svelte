@@ -24,4 +24,3 @@
 		</Sidebar.MenuButton>
 	</Sidebar.MenuItem>
 </Sidebar.Menu>
-

@@ -52,7 +52,10 @@
 								{/if}
 							</td>
 							<td class="px-4 py-2">
-								<a href="/project/{run.projectId}?pair={run.pairId}" class="font-medium hover:text-primary hover:underline">
+								<a
+									href="/project/{run.projectId}?pair={run.pairId}"
+									class="font-medium hover:text-primary hover:underline"
+								>
 									{run.projectName}
 								</a>
 							</td>
@@ -80,8 +83,12 @@
 								<div class="flex items-center gap-0.5">
 									{#each run.tests.slice(0, 8) as test}
 										<div
-											class="w-1.5 h-4 rounded-sm {test.status === 'pass' ? 'bg-green-500' : 'bg-destructive'}"
-											title="{test.path} ({test.viewport}): {test.status}{test.mismatch ? ` - ${test.mismatch}% mismatch` : ''}"
+											class="w-1.5 h-4 rounded-sm {test.status === 'pass'
+												? 'bg-green-500'
+												: 'bg-destructive'}"
+											title="{test.path} ({test.viewport}): {test.status}{test.mismatch
+												? ` - ${test.mismatch}% mismatch`
+												: ''}"
 										></div>
 									{/each}
 									{#if run.tests.length > 8}

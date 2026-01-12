@@ -73,10 +73,10 @@ export const actions: Actions = {
 				return fail(400, { error: 'Invalid command', success: false });
 			}
 
-		const project = db.getProject(params.id);
-		if (!project) return fail(404, { error: 'Project not found', success: false });
+			const project = db.getProject(params.id);
+			if (!project) return fail(404, { error: 'Project not found', success: false });
 
-		const settings = db.getSettings();
+			const settings = db.getSettings();
 			const urlPair = settings.urlPairs?.find((p) => p.id === pairId);
 			if (!urlPair) return fail(400, { error: 'Invalid URL pair', success: false });
 
@@ -98,9 +98,9 @@ export const actions: Actions = {
 				}
 			}
 
-			return { 
-				success: true, 
-				command, 
+			return {
+				success: true,
+				command,
 				status: job.status,
 				queuePosition: getQueuePosition(params.id, pairId)
 			};

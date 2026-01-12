@@ -39,7 +39,9 @@
 	let linkCheckerExclude = $state<string[]>(data.project.linkCheckerConfig?.exclude || []);
 	let linkCheckerConcurrency = $state(data.project.linkCheckerConfig?.maxConcurrency || 10);
 	let linkCheckerTimeout = $state(data.project.linkCheckerConfig?.timeout || 20);
-	let linkCheckerIgnoreParams = $state<string[]>(data.project.linkCheckerConfig?.ignoreQueryParams || []);
+	let linkCheckerIgnoreParams = $state<string[]>(
+		data.project.linkCheckerConfig?.ignoreQueryParams || []
+	);
 
 	let deleteDialogOpen = $state(false);
 	let deleteFormEl = $state<HTMLFormElement | null>(null);
@@ -153,7 +155,10 @@ This action cannot be undone."
 												<Tooltip.Provider>
 													<Tooltip.Root>
 														<Tooltip.Trigger>
-															<Badge variant="outline" class="text-xs text-amber-600 border-amber-600/30">
+															<Badge
+																variant="outline"
+																class="text-xs text-amber-600 border-amber-600/30"
+															>
 																<AlertCircleIcon class="h-3 w-3 mr-1" />
 																{otherProjects.length}
 															</Badge>
@@ -277,7 +282,8 @@ This action cannot be undone."
 						class="font-mono text-sm"
 					/>
 					<p class="text-xs text-muted-foreground">
-						CSS selectors to hide before capture (one per line). Use for dynamic content like timestamps, ads, or counters that change between runs.
+						CSS selectors to hide before capture (one per line). Use for dynamic content like
+						timestamps, ads, or counters that change between runs.
 					</p>
 				</div>
 			</CardContent>
@@ -286,9 +292,7 @@ This action cannot be undone."
 		<Card>
 			<CardHeader>
 				<CardTitle class="text-base">Link Checker</CardTitle>
-				<CardDescription>
-					Override global link checker settings for this project.
-				</CardDescription>
+				<CardDescription>Override global link checker settings for this project.</CardDescription>
 			</CardHeader>
 			<CardContent class="space-y-4">
 				<div class="space-y-2">
@@ -297,14 +301,17 @@ This action cannot be undone."
 						id="linkCheckerExclude"
 						placeholder="https://example.com/.*"
 						value={linkCheckerExclude.join('\n')}
-						oninput={(e) => linkCheckerExclude = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						oninput={(e) =>
+							(linkCheckerExclude = (e.target as HTMLTextAreaElement).value
+								.split('\n')
+								.filter((l) => l.trim()))}
 						class="font-mono text-xs"
 					/>
 					<p class="text-xs text-muted-foreground">
 						URL patterns to skip (one per line). Supports strings or regex patterns.
 					</p>
 				</div>
-				
+
 				<div class="grid gap-6 md:grid-cols-2">
 					<div class="space-y-2">
 						<Label for="linkCheckerConcurrency">Max Concurrency</Label>
@@ -317,12 +324,7 @@ This action cannot be undone."
 					</div>
 					<div class="space-y-2">
 						<Label for="linkCheckerTimeout">Timeout (seconds)</Label>
-						<Input
-							id="linkCheckerTimeout"
-							type="number"
-							min="1"
-							bind:value={linkCheckerTimeout}
-						/>
+						<Input id="linkCheckerTimeout" type="number" min="1" bind:value={linkCheckerTimeout} />
 					</div>
 				</div>
 
@@ -332,7 +334,10 @@ This action cannot be undone."
 						id="linkCheckerIgnoreParams"
 						placeholder="ver&#10;v&#10;_"
 						value={linkCheckerIgnoreParams.join('\n')}
-						oninput={(e) => linkCheckerIgnoreParams = (e.target as HTMLTextAreaElement).value.split('\n').filter(l => l.trim())}
+						oninput={(e) =>
+							(linkCheckerIgnoreParams = (e.target as HTMLTextAreaElement).value
+								.split('\n')
+								.filter((l) => l.trim()))}
 						class="font-mono text-xs"
 						rows={3}
 					/>
@@ -340,13 +345,17 @@ This action cannot be undone."
 						Query parameters to ignore when comparing URLs (one per line).
 					</p>
 				</div>
-				
-				<input type="hidden" name="linkCheckerConfig" value={JSON.stringify({
-					exclude: linkCheckerExclude,
-					maxConcurrency: linkCheckerConcurrency,
-					timeout: linkCheckerTimeout,
-					ignoreQueryParams: linkCheckerIgnoreParams
-				})} />
+
+				<input
+					type="hidden"
+					name="linkCheckerConfig"
+					value={JSON.stringify({
+						exclude: linkCheckerExclude,
+						maxConcurrency: linkCheckerConcurrency,
+						timeout: linkCheckerTimeout,
+						ignoreQueryParams: linkCheckerIgnoreParams
+					})}
+				/>
 			</CardContent>
 		</Card>
 

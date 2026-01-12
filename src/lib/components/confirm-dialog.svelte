@@ -36,10 +36,9 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>{cancelText}</AlertDialog.Cancel>
-			<Button variant={variant} onclick={handleConfirm}>
+			<Button {variant} onclick={handleConfirm}>
 				{confirmText}
 			</Button>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
-

@@ -80,7 +80,11 @@ export async function runBackstop(
 
 	// Use short hash-based ID for BackstopJS to minimize filename length
 	// The full project/pair IDs are already used in the directory path
-	const idHash = crypto.createHash('md5').update(`${project.id}_${urlPair.id}`).digest('hex').slice(0, 12);
+	const idHash = crypto
+		.createHash('md5')
+		.update(`${project.id}_${urlPair.id}`)
+		.digest('hex')
+		.slice(0, 12);
 	const backstopId = `bs_${idHash}`;
 
 	const config = {

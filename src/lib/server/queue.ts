@@ -1,7 +1,13 @@
 import type { Project, UrlPair } from '$lib/types';
 import { runBackstop } from './backstop';
 import { runLinkCheck } from './link-checker';
-import { getProject, saveProject, updatePairResult, addRunRecord, updateLinkCheckResult } from './db';
+import {
+	getProject,
+	saveProject,
+	updatePairResult,
+	addRunRecord,
+	updateLinkCheckResult
+} from './db';
 
 export interface QueueJob {
 	id: string;
@@ -33,8 +39,10 @@ export function getQueuePosition(projectId: string, pairId: string): number {
 export function getJobStatus(projectId: string, pairId: string): QueueJob | null {
 	// Check running or queued jobs first
 	const active = queue.find(
-		(j) => j.projectId === projectId && j.pairId === pairId && 
-		(j.status === 'queued' || j.status === 'running')
+		(j) =>
+			j.projectId === projectId &&
+			j.pairId === pairId &&
+			(j.status === 'queued' || j.status === 'running')
 	);
 	return active || null;
 }
@@ -66,7 +74,9 @@ export function addJob(
 	};
 
 	queue.push(job);
-	console.log(`[Queue] Added job: ${job.command} for ${projectId}/${pairId}. Queue length: ${queue.filter(j => j.status === 'queued').length}`);
+	console.log(
+		`[Queue] Added job: ${job.command} for ${projectId}/${pairId}. Queue length: ${queue.filter((j) => j.status === 'queued').length}`
+	);
 
 	// Start processing if not already
 	processQueue();
@@ -83,34 +93,32 @@ export function clearCompletedJobs(): number {
 export function cancelJob(jobId: string): boolean {
 	const job = queue.find((j) => j.id === jobId && j.status === 'queued');
 	if (!job) return false;
-	
+
 	// Remove from queue
 	queue = queue.filter((j) => j.id !== jobId);
 	console.log(`[Queue] Cancelled job: ${jobId}`);
-	
+
 	try {
 		const project = getProject(job.projectId);
 		if (project?.pairResults?.[job.pairId]?.status === 'queued') {
 			updatePairResult(job.projectId, job.pairId, { status: 'idle' });
 		}
 	} catch {}
-	
+
 	return true;
 }
 
 export function cancelProjectJobs(projectId: string, pairId?: string): number {
 	const toCancel = queue.filter(
-		(j) => j.projectId === projectId && 
-		j.status === 'queued' && 
-		(!pairId || j.pairId === pairId)
+		(j) => j.projectId === projectId && j.status === 'queued' && (!pairId || j.pairId === pairId)
 	);
-	
+
 	toCancel.forEach((job) => {
 		queue = queue.filter((j) => j.id !== job.id);
 	});
-	
+
 	console.log(`[Queue] Cancelled ${toCancel.length} jobs for project ${projectId}`);
-	
+
 	try {
 		const project = getProject(projectId);
 		if (project) {
@@ -121,7 +129,7 @@ export function cancelProjectJobs(projectId: string, pairId?: string): number {
 			});
 		}
 	} catch {}
-	
+
 	return toCancel.length;
 }
 
@@ -182,7 +190,7 @@ async function processQueue(): Promise<void> {
 			} else {
 				result = await runBackstop(project, pair, job.command);
 			}
-			
+
 			const durationMs = Date.now() - startTime;
 
 			job.status = result.success ? 'completed' : 'failed';
@@ -217,7 +225,9 @@ async function processQueue(): Promise<void> {
 				});
 			}
 
-			console.log(`[Queue] Completed job: ${job.command} for ${job.projectId}/${job.pairId}. Success: ${result.success}. Duration: ${durationMs}ms`);
+			console.log(
+				`[Queue] Completed job: ${job.command} for ${job.projectId}/${job.pairId}. Success: ${result.success}. Duration: ${durationMs}ms`
+			);
 		} catch (e) {
 			const durationMs = Date.now() - startTime;
 			job.status = 'failed';
@@ -233,27 +243,27 @@ async function processQueue(): Promise<void> {
 				error: job.error
 			});
 
-		try {
-			if (job.command === 'linkcheck') {
-				updateLinkCheckResult(job.projectId, job.pairId, {
-					status: 'idle',
-					lastRun: job.completedAt,
-					error: job.error,
-					progress: null
-				});
-			} else {
-				updatePairResult(job.projectId, job.pairId, {
-					status: 'idle',
-					lastRun: job.completedAt,
-					lastResult: {
-						success: false,
-						command: job.command,
-						error: job.error
-					},
-					progress: null
-				});
-			}
-		} catch {}
+			try {
+				if (job.command === 'linkcheck') {
+					updateLinkCheckResult(job.projectId, job.pairId, {
+						status: 'idle',
+						lastRun: job.completedAt,
+						error: job.error,
+						progress: null
+					});
+				} else {
+					updatePairResult(job.projectId, job.pairId, {
+						status: 'idle',
+						lastRun: job.completedAt,
+						lastResult: {
+							success: false,
+							command: job.command,
+							error: job.error
+						},
+						progress: null
+					});
+				}
+			} catch {}
 		}
 
 		// Clean up old completed jobs (keep last 50)
@@ -279,9 +289,7 @@ export function queueRunAll(
 	const jobs: QueueJob[] = [];
 
 	// Filter to single pair if specified
-	const targetPairs = options.pairId 
-		? pairs.filter(p => p.id === options.pairId)
-		: pairs;
+	const targetPairs = options.pairId ? pairs.filter((p) => p.id === options.pairId) : pairs;
 
 	for (const project of projects) {
 		for (const pair of targetPairs) {
@@ -292,7 +300,8 @@ export function queueRunAll(
 		}
 	}
 
-	console.log(`[Queue] Queued Run All: ${jobs.length} jobs for ${projects.length} projects × ${targetPairs.length} pair(s)`);
+	console.log(
+		`[Queue] Queued Run All: ${jobs.length} jobs for ${projects.length} projects × ${targetPairs.length} pair(s)`
+	);
 	return jobs;
 }
-

@@ -1,5 +1,11 @@
 import { LinkChecker, LinkState, type LinkResult as LinkinatorResult } from 'linkinator';
-import type { Project, UrlPair, LinkCheckRunResult, LinkResult, LinkCheckerConfig } from '$lib/types';
+import type {
+	Project,
+	UrlPair,
+	LinkCheckRunResult,
+	LinkResult,
+	LinkCheckerConfig
+} from '$lib/types';
 import { updateLinkCheckResult, getSettings } from './db';
 
 const DEFAULT_IGNORED_PARAMS = ['ver', 'v', '_', 't', 'timestamp', 'cache', 'cb', 'nocache'];
@@ -8,14 +14,14 @@ function normalizeUrl(url: string, ignoreParams: string[]): string {
 	try {
 		const parsed = new URL(url);
 		const paramsToRemove = [...DEFAULT_IGNORED_PARAMS, ...ignoreParams];
-		
+
 		for (const param of paramsToRemove) {
 			parsed.searchParams.delete(param);
 		}
-		
+
 		// Sort remaining params for consistent comparison
 		parsed.searchParams.sort();
-		
+
 		return parsed.toString();
 	} catch {
 		return url;
@@ -102,11 +108,16 @@ async function executeCheck(
 
 	checker.on('link', (result: LinkinatorResult) => {
 		checkedCount++;
-		
+
 		const link: LinkResult = {
 			url: result.url,
 			normalizedUrl: normalizeUrl(result.url, ignoreParams),
-			status: result.state === LinkState.OK ? 'OK' : result.state === LinkState.SKIPPED ? 'Skipped' : 'Error',
+			status:
+				result.state === LinkState.OK
+					? 'OK'
+					: result.state === LinkState.SKIPPED
+						? 'Skipped'
+						: 'Error',
 			statusCode: result.status,
 			parent: result.parent
 		};

@@ -91,7 +91,9 @@
 					<Select.Trigger class="w-auto min-w-[200px] h-8 text-xs">
 						{#if data.selectedPair}
 							<span class="flex items-center gap-1.5 font-mono">
-								<span class="text-muted-foreground">{extractHostname(data.selectedPair.canonicalUrl)}</span>
+								<span class="text-muted-foreground"
+									>{extractHostname(data.selectedPair.canonicalUrl)}</span
+								>
 								<ArrowRightIcon class="h-3 w-3 text-muted-foreground" />
 								<span>{extractHostname(data.selectedPair.candidateUrl)}</span>
 							</span>

@@ -12,4 +12,3 @@ export const load: LayoutServerLoad = async ({ url }) => {
 
 	return { projects, urlPairs, selectedPair };
 };
-
