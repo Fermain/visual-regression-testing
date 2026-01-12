@@ -262,41 +262,72 @@
 		});
 	});
 
-	// Link stats for filter badges
+	// Link stats for filter badges - computed from the same combined data as filteredLinks
 	let linkStats = $derived.by(() => {
 		if (!linkCheckResult?.canonical || !linkCheckResult?.candidate) return null;
 
-		// Use normalized URLs for comparison
+		// Build combined list using same logic as filteredLinks (without filter)
 		const canonicalByKey = new Map(linkCheckResult.canonical.links.map(l => [getLinkKey(l), l]));
 		const candidateByKey = new Map(linkCheckResult.candidate.links.map(l => [getLinkKey(l), l]));
-		const allKeys = new Set([...canonicalByKey.keys(), ...candidateByKey.keys()]);
 
+		const combined: Array<{
+			refStatus: string | null;
+			refCode: number | null;
+			testStatus: string | null;
+			testCode: number | null;
+			isDropped: boolean;
+			isAdded: boolean;
+		}> = [];
+
+		for (const link of linkCheckResult.canonical.links) {
+			const key = getLinkKey(link);
+			const testLink = candidateByKey.get(key);
+			combined.push({
+				refStatus: link.status,
+				refCode: link.statusCode ?? null,
+				testStatus: testLink?.status ?? null,
+				testCode: testLink?.statusCode ?? null,
+				isDropped: !candidateByKey.has(key),
+				isAdded: false
+			});
+		}
+
+		for (const link of linkCheckResult.candidate.links) {
+			const key = getLinkKey(link);
+			if (!canonicalByKey.has(key)) {
+				combined.push({
+					refStatus: null,
+					refCode: null,
+					testStatus: link.status,
+					testCode: link.statusCode ?? null,
+					isDropped: false,
+					isAdded: true
+				});
+			}
+		}
+
+		// Now compute stats from the combined list
 		let errors = 0;
 		let notFound = 0;
 		let dropped = 0;
 		let added = 0;
 		let ok = 0;
-		const total = allKeys.size;
 
-		for (const link of linkCheckResult.canonical.links) {
-			const key = getLinkKey(link);
-			if (link.status !== 'OK') errors++;
-			if (link.statusCode === 404) notFound++;
-			if (!candidateByKey.has(key)) dropped++;
-		}
-
-		for (const link of linkCheckResult.candidate.links) {
-			const key = getLinkKey(link);
-			if (link.status !== 'OK') errors++;
-			if (link.statusCode === 404) notFound++;
-			if (!canonicalByKey.has(key)) added++;
-			const refLink = canonicalByKey.get(key);
-			if (link.status === 'OK' && refLink?.status === 'OK') {
+		for (const link of combined) {
+			if ((link.refStatus && link.refStatus !== 'OK') || (link.testStatus && link.testStatus !== 'OK')) {
+				errors++;
+			}
+			if (link.refCode === 404 || link.testCode === 404) {
+				notFound++;
+			}
+			if (link.isDropped) dropped++;
+			if (link.isAdded) added++;
+			if (link.refStatus === 'OK' && link.testStatus === 'OK') {
 				ok++;
 			}
 		}
 
-		return { total, errors, notFound, dropped, added, ok };
+		return { total: combined.length, errors, notFound, dropped, added, ok };
 	});
 
 	// Hotkeys for filters
